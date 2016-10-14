@@ -1,0 +1,30 @@
+{
+  "name": "axiba-init",
+  "version": "1.0.2",
+  "description": "",
+  "typings": "src/index.ts",
+  "main": "src/index.js",
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-jsdoc3": "^0.3.0",
+    "gulp-typescript": "^2.13.6"
+  },
+  "dependencies": {
+    "axiba-util": "^1.1.5",
+    "npm": "^3.10.8"
+  },
+  "scripts": {
+    "start": "gulp",
+    "test": "node test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/unclemake/axiba-init.git"
+  },
+  "author": "unclemake",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/unclemake/axiba-init/issues"
+  },
+  "homepage": "https://github.com/unclemake/axiba-init#readme"
+}
