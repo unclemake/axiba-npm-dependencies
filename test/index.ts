@@ -6,28 +6,53 @@ import { describe, describeClass, its, run, it, itAdd, itClass } from 'axiba-uni
 describeClass('测试', npmDependent, () => {
 
     itClass('getVersionString', () => {
-        itAdd(['1.0.1'], value => {
+        itAdd(['^1.0.1'], value => {
             return value === '">=1.0.1 <2.0.1"';
+        });
+
+        itAdd(['1.0.1'], value => {
+            return value === '1.0.1';
+        });
+    });
+
+
+    itClass('versionContrast', () => {
+        itAdd(['^1.0.1', '1.1.2'], value => {
+            return value === true;
+        });
+
+
+        itAdd(['^1.0.1', '1.1.0'], value => {
+            return value === true;
+        });
+
+        itAdd(['^1.1.2', '1.1.1'], value => {
+            return value === false;
+        });
+
+        itAdd(['^1.2.1', '1.1.2'], value => {
+            return value === false;
+        });
+
+        itAdd(['^1.2.1', '2.1.2'], value => {
+            return value === false;
         });
     });
 
 
 
-    // itClass('getDependenciesObj', () => {
-    //     itAdd(['gulp'], value => {
-    //         return value.path === 'node_modules/gulp';
-    //     });
-
-    // });
+    itClass('getDependenciesObj', () => {
+        itAdd(['gulp'], value => {
+            return value.path === 'node_modules/gulp';
+        });
+    });
 
 
     itClass('get', () => {
         itAdd(['react'], value => {
-            return false;
+            return true;
         }, 9999999);
     });
-
-
 
     itClass('findNpmView', () => {
 
@@ -56,6 +81,11 @@ describeClass('测试', npmDependent, () => {
             return value.path === 'url/gulp';
         });
     });
+
+    itClass('createJsonFile', () => {
+        itAdd([], value => true);
+    });
+
 })
 
 run();

@@ -1,10 +1,17 @@
 ﻿import * as npm from 'npm';
 import * as ph from 'path';
+import * as fs from 'fs';
 import util from 'axiba-util';
 import dep from 'axiba-dependencies';
 
 
 declare var require: any;
+let json;
+try {
+    json = require(process.cwd() + '/node-dependent.json');
+} catch (error) {
+    json = [];
+}
 
 /**
 * nodejs依赖结构
@@ -80,8 +87,19 @@ class Npmdependencies {
     * 记录nodejs模块依赖列表
     * @param  模块名称
     */
-    dependenciesObjArrary: DependenciesObj[] = []
-
+    dependenciesObjArrary: DependenciesObj[] = json
+    /**
+        * 生成依赖json文件
+        * @param  {string='./dependent.json'} path
+        * @returns Promise
+        */
+    createJsonFile(path: string = process.cwd() + '/node-dependent.json'): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+            fs.writeFile(path, JSON.stringify(this.dependenciesObjArrary), 'utf8', () => {
+                resolve();
+            });
+        })
+    }
 
     /**
     * 获取所有文件列表
@@ -114,11 +132,10 @@ class Npmdependencies {
      * @returns Promise<DependenciesObj>
      */
     async getDependenciesObj(name: string, version?: string): Promise<DependenciesObj> {
-        await this.npmLoadCoifig();
-
         let dependenciesObj = this.findDependenciesObj(name, version);
 
         if (!dependenciesObj) {
+            await this.npmLoadCoifig();
             dependenciesObj = {
                 path: '',
                 main: '',
@@ -139,7 +156,7 @@ class Npmdependencies {
                 let version = view._dependencies[key];
                 depArrary.push({
                     name: key,
-                    version: version.replace(/[^.\d]/g, '')
+                    version: version
                 });
             }
 
@@ -158,17 +175,31 @@ class Npmdependencies {
                 .filter(value => !depArrary.find(val => value === val.name));
 
             dependenciesObj.fileArray = depFileArray;
-
+            this.dependenciesObjArrary.push(dependenciesObj);
         }
+
+
         return dependenciesObj;
     }
 
 
-    getVersionString(value: string, key = '^'): string {
-        let intArray: number[] = value.split('.').map(value => parseInt(value));
+    // private isFilePath(name: string) {
+    //     return ['path', 'url', 'http', 'https', 'util', 'zlib', 'stream'].indexOf(name) != -1;
+    // }
 
+
+    /**
+     * 生成npm ls 查询的版本号
+     * @param  {string} value
+     * @returns string
+     */
+    getVersionString(value: string): string {
+        let intArray: number[] = value.replace(/[^\.\d]/g, '').split('.').map(value => parseInt(value));
+        let key = value[0];
         if (key === '^') {
-            return `">=${value} <${intArray[0] + 1}.${intArray[1]}.${intArray[2]}"`;
+            return `">=${intArray[0]}.${intArray[1]}.${intArray[2]} <${intArray[0] + 1}.${intArray[1]}.${intArray[2]}"`;
+        } else {
+            return value;
         }
     }
 
@@ -208,9 +239,26 @@ class Npmdependencies {
      */
     private findDependenciesObj(name: string, version?: string) {
         if (version) {
-            return this.dependenciesObjArrary.find(value => value.name === name);
+            return this.dependenciesObjArrary.find(value => value.name === name && this.versionContrast(version, value.version));
         } else {
-            return this.dependenciesObjArrary.find(value => value.name === name && value.version === version);
+            return this.dependenciesObjArrary.find(value => value.name === name);
+        }
+    }
+
+    /**
+     * 对比node版本号
+     * @param  {string} keyVersion 带^的版本号
+     * @param  {string} version
+     * @returns boolean
+     */
+    versionContrast(keyVersion: string, version: string): boolean {
+        let keyA: number[] = keyVersion.replace(/[^\.\d]/g, '').split('.').map(value => parseInt(value));
+        let vA: number[] = version.split('.').map(value => parseInt(value));
+        switch (keyVersion[0]) {
+            case '^':
+                return vA[0] == keyA[0] && (vA[1] > keyA[1] || (vA[1] == keyA[1] && vA[2] >= keyA[2]));
+            default:
+                return true;
         }
     }
 

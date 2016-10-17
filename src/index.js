@@ -9,7 +9,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 const npm = require('npm');
 const ph = require('path');
+const fs = require('fs');
 const axiba_dependencies_1 = require('axiba-dependencies');
+let json;
+try {
+    json = require(process.cwd() + '/node-dependent.json');
+}
+catch (error) {
+    json = [];
+}
 /**
  * 获取npm依赖
  */
@@ -21,7 +29,7 @@ class Npmdependencies {
         * 记录nodejs模块依赖列表
         * @param  模块名称
         */
-        this.dependenciesObjArrary = [];
+        this.dependenciesObjArrary = json;
     }
     /**
      * 加载npm配置
@@ -50,6 +58,18 @@ class Npmdependencies {
                 npm.commands[fun](args, show, (err, result) => {
                     resolve(result);
                 });
+            });
+        });
+    }
+    /**
+        * 生成依赖json文件
+        * @param  {string='./dependent.json'} path
+        * @returns Promise
+        */
+    createJsonFile(path = process.cwd() + '/node-dependent.json') {
+        return new Promise((resolve, reject) => {
+            fs.writeFile(path, JSON.stringify(this.dependenciesObjArrary), 'utf8', () => {
+                resolve();
             });
         });
     }
@@ -83,9 +103,9 @@ class Npmdependencies {
      */
     getDependenciesObj(name, version) {
         return __awaiter(this, void 0, Promise, function* () {
-            yield this.npmLoadCoifig();
             let dependenciesObj = this.findDependenciesObj(name, version);
             if (!dependenciesObj) {
+                yield this.npmLoadCoifig();
                 dependenciesObj = {
                     path: '',
                     main: '',
@@ -101,7 +121,7 @@ class Npmdependencies {
                     let version = view._dependencies[key];
                     depArrary.push({
                         name: key,
-                        version: version.replace(/[^.\d]/g, '')
+                        version: version
                     });
                 }
                 dependenciesObj = {
@@ -116,14 +136,27 @@ class Npmdependencies {
                 let depFileArray = axiba_dependencies_1.default.getDependentArr(ph.join(dependenciesObj.path, dependenciesObj.main))
                     .filter(value => !depArrary.find(val => value === val.name));
                 dependenciesObj.fileArray = depFileArray;
+                this.dependenciesObjArrary.push(dependenciesObj);
             }
             return dependenciesObj;
         });
     }
-    getVersionString(value, key = '^') {
-        let intArray = value.split('.').map(value => parseInt(value));
+    // private isFilePath(name: string) {
+    //     return ['path', 'url', 'http', 'https', 'util', 'zlib', 'stream'].indexOf(name) != -1;
+    // }
+    /**
+     * 生成npm ls 查询的版本号
+     * @param  {string} value
+     * @returns string
+     */
+    getVersionString(value) {
+        let intArray = value.replace(/[^\.\d]/g, '').split('.').map(value => parseInt(value));
+        let key = value[0];
         if (key === '^') {
-            return `">=${value} <${intArray[0] + 1}.${intArray[1]}.${intArray[2]}"`;
+            return `">=${intArray[0]}.${intArray[1]}.${intArray[2]} <${intArray[0] + 1}.${intArray[1]}.${intArray[2]}"`;
+        }
+        else {
+            return value;
         }
     }
     /**
@@ -155,10 +188,26 @@ class Npmdependencies {
      */
     findDependenciesObj(name, version) {
         if (version) {
-            return this.dependenciesObjArrary.find(value => value.name === name);
+            return this.dependenciesObjArrary.find(value => value.name === name && this.versionContrast(version, value.version));
         }
         else {
-            return this.dependenciesObjArrary.find(value => value.name === name && value.version === version);
+            return this.dependenciesObjArrary.find(value => value.name === name);
+        }
+    }
+    /**
+     * 对比node版本号
+     * @param  {string} keyVersion 带^的版本号
+     * @param  {string} version
+     * @returns boolean
+     */
+    versionContrast(keyVersion, version) {
+        let keyA = keyVersion.replace(/[^\.\d]/g, '').split('.').map(value => parseInt(value));
+        let vA = version.split('.').map(value => parseInt(value));
+        switch (keyVersion[0]) {
+            case '^':
+                return vA[0] == keyA[0] && (vA[1] > keyA[1] || (vA[1] == keyA[1] && vA[2] >= keyA[2]));
+            default:
+                return true;
         }
     }
 }
