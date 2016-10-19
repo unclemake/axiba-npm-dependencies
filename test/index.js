@@ -27,11 +27,11 @@ axiba_unit_test_1.describeClass('测试', index_1.default, () => {
             return value === false;
         });
     });
-    axiba_unit_test_1.itClass('getDependenciesObj', () => {
-        axiba_unit_test_1.itAdd(['gulp'], value => {
-            return value.path === 'node_modules/gulp';
-        });
-    });
+    // itClass('getDependenciesObj', () => {
+    //     itAdd(['gulp'], value => {
+    //         return value.name === 'gulp';
+    //     });
+    // });
     axiba_unit_test_1.itClass('get', () => {
         axiba_unit_test_1.itAdd(['react'], value => {
             return true;

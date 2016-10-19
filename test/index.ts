@@ -41,11 +41,11 @@ describeClass('测试', npmDependent, () => {
 
 
 
-    itClass('getDependenciesObj', () => {
-        itAdd(['gulp'], value => {
-            return value.path === 'node_modules/gulp';
-        });
-    });
+    // itClass('getDependenciesObj', () => {
+    //     itAdd(['gulp'], value => {
+    //         return value.name === 'gulp';
+    //     });
+    // });
 
 
     itClass('get', () => {

@@ -21,7 +21,7 @@ catch (error) {
 /**
  * 获取npm依赖
  */
-class Npmdependencies {
+class NpmDependencies {
     constructor() {
         this.isload = false;
         this.npmConfig = require(process.cwd() + '/package.json');
@@ -30,6 +30,7 @@ class Npmdependencies {
         * @param  模块名称
         */
         this.dependenciesObjArrary = json;
+        this.getArrary = [];
     }
     /**
      * 加载npm配置
@@ -81,6 +82,12 @@ class Npmdependencies {
     */
     get(name, version, first = true) {
         return __awaiter(this, void 0, Promise, function* () {
+            first && (this.getArrary = []);
+            console.log(name);
+            if (this.getArrary.indexOf(name) != -1) {
+                return [];
+            }
+            this.getArrary.push(name);
             let dependenciesObj = yield this.getDependenciesObj(name, version);
             let pathString = dependenciesObj.fileArray;
             for (let key in dependenciesObj.dependencies) {
@@ -93,6 +100,15 @@ class Npmdependencies {
             else {
                 return pathString;
             }
+        });
+    }
+    ls(str) {
+        return new Promise((resolve, reject) => {
+            this.npmLoadCoifig().then(() => {
+                npm.commands.ls([str], (obj, obj2) => {
+                    resolve(obj2);
+                });
+            });
         });
     }
     /**
@@ -114,7 +130,8 @@ class Npmdependencies {
                     version: '',
                     dependencies: []
                 };
-                let view = yield this.cmd('ls', [version ? name + '@' + this.getVersionString(version) : name]);
+                console.log(name);
+                let view = yield this.ls(version ? name + '@' + this.getVersionString(version) : name);
                 view = this.findNpmView(view, name, version);
                 let depArrary = [];
                 for (let key in view._dependencies) {
@@ -133,7 +150,7 @@ class Npmdependencies {
                     dependencies: depArrary
                 };
                 yield axiba_dependencies_1.default.src(dependenciesObj.path + '/**/*.js');
-                let depFileArray = axiba_dependencies_1.default.getDependentArr(ph.join(dependenciesObj.path, dependenciesObj.main))
+                let depFileArray = axiba_dependencies_1.default.getBeDependenciesArr(ph.join(dependenciesObj.path, dependenciesObj.main))
                     .filter(value => !depArrary.find(val => value === val.name));
                 dependenciesObj.fileArray = depFileArray;
                 this.dependenciesObjArrary.push(dependenciesObj);
@@ -211,7 +228,8 @@ class Npmdependencies {
         }
     }
 }
+exports.NpmDependencies = NpmDependencies;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = new Npmdependencies();
+exports.default = new NpmDependencies();
 
 //# sourceMappingURL=index.js.map

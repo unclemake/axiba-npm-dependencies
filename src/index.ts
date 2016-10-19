@@ -46,7 +46,7 @@ interface NpmList {
 /**
  * 获取npm依赖
  */
-class Npmdependencies {
+export class NpmDependencies {
 
 
     isload = false
@@ -101,6 +101,8 @@ class Npmdependencies {
         })
     }
 
+
+    getArrary = [];
     /**
     * 获取所有文件列表
     * @param  {string} name 名称
@@ -108,6 +110,15 @@ class Npmdependencies {
     * @returns Promise<DependenciesObj>
     */
     async get(name: string, version?: string, first = true): Promise<string[]> {
+        first && (this.getArrary = []);
+        console.log(name);
+
+        if (this.getArrary.indexOf(name) != -1) {
+            return [];
+        }
+
+        this.getArrary.push(name);
+
         let dependenciesObj = await this.getDependenciesObj(name, version);
         let pathString: string[] = dependenciesObj.fileArray;
 
@@ -124,7 +135,15 @@ class Npmdependencies {
     }
 
 
-
+    ls(str: string): Promise<any> {
+        return new Promise((resolve, reject) => {
+            this.npmLoadCoifig().then(() => {
+                npm.commands.ls([str], (obj, obj2) => {
+                    resolve(obj2);
+                });
+            })
+        });
+    }
     /**
      * 获取DependenciesObj
      * @param  {string} name 名称
@@ -145,7 +164,8 @@ class Npmdependencies {
                 dependencies: []
             }
 
-            let view: NpmList = await this.cmd('ls', [version ? name + '@' + this.getVersionString(version) : name]);
+            console.log(name);
+            let view: NpmList = await this.ls(version ? name + '@' + this.getVersionString(version) : name);
             view = this.findNpmView(view, name, version);
 
             let depArrary: {
@@ -171,7 +191,7 @@ class Npmdependencies {
             };
 
             await dep.src(dependenciesObj.path + '/**/*.js');
-            let depFileArray = dep.getDependentArr(ph.join(dependenciesObj.path, dependenciesObj.main))
+            let depFileArray = dep.getBeDependenciesArr(ph.join(dependenciesObj.path, dependenciesObj.main))
                 .filter(value => !depArrary.find(val => value === val.name));
 
             dependenciesObj.fileArray = depFileArray;
@@ -265,4 +285,4 @@ class Npmdependencies {
 }
 
 
-export default new Npmdependencies();
+export default new NpmDependencies();
