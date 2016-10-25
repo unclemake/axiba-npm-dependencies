@@ -33,7 +33,7 @@ axiba_unit_test_1.describeClass('测试', index_1.default, () => {
     //     });
     // });
     axiba_unit_test_1.itClass('get', () => {
-        axiba_unit_test_1.itAdd(['react'], value => {
+        axiba_unit_test_1.itAdd(['gulp'], value => {
             return true;
         }, 9999999);
     });

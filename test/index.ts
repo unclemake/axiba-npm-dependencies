@@ -49,7 +49,7 @@ describeClass('测试', npmDependent, () => {
 
 
     itClass('get', () => {
-        itAdd(['react'], value => {
+        itAdd(['gulp'], value => {
             return true;
         }, 9999999);
     });

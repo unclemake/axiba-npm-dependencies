@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 const npm = require('npm');
 const ph = require('path');
 const fs = require('fs');
+const axiba_util_1 = require('axiba-util');
 const axiba_dependencies_1 = require('axiba-dependencies');
 let json;
 try {
@@ -49,10 +50,10 @@ class NpmDependencies {
         });
     }
     /**
-         * promise包裹回调
-         * @param fun
-         * @param args 命令参数
-         */
+     * promise包裹回调
+     * @param fun
+     * @param args 命令参数
+     */
     cmd(fun, args, show = true) {
         return new Promise((resolve) => {
             this.npmLoadCoifig().then(() => {
@@ -63,10 +64,10 @@ class NpmDependencies {
         });
     }
     /**
-        * 生成依赖json文件
-        * @param  {string='./dependent.json'} path
-        * @returns Promise
-        */
+    * 生成依赖json文件
+    * @param  {string='./dependent.json'} path
+    * @returns Promise
+    */
     createJsonFile(path = process.cwd() + '/node-dependent.json') {
         return new Promise((resolve, reject) => {
             fs.writeFile(path, JSON.stringify(this.dependenciesObjArrary), 'utf8', () => {
@@ -83,7 +84,6 @@ class NpmDependencies {
     get(name, version, first = true) {
         return __awaiter(this, void 0, Promise, function* () {
             first && (this.getArrary = []);
-            console.log(name);
             if (this.getArrary.indexOf(name) != -1) {
                 return [];
             }
@@ -130,8 +130,7 @@ class NpmDependencies {
                     version: '',
                     dependencies: []
                 };
-                console.log(name);
-                let view = yield this.ls(version ? name + '@' + this.getVersionString(version) : name);
+                let view = yield this.cmd('ls', [version ? name + '@' + this.getVersionString(version) : name]);
                 view = this.findNpmView(view, name, version);
                 let depArrary = [];
                 for (let key in view._dependencies) {
@@ -149,6 +148,7 @@ class NpmDependencies {
                     version: view.version,
                     dependencies: depArrary
                 };
+                axiba_util_1.default.log(name);
                 yield axiba_dependencies_1.default.src(dependenciesObj.path + '/**/*.js');
                 let depFileArray = axiba_dependencies_1.default.getBeDependenciesArr(ph.join(dependenciesObj.path, dependenciesObj.main))
                     .filter(value => !depArrary.find(val => value === val.name));

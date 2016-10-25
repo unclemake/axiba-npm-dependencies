@@ -69,10 +69,10 @@ export class NpmDependencies {
 
 
     /**
-         * promise包裹回调
-         * @param fun
-         * @param args 命令参数
-         */
+     * promise包裹回调
+     * @param fun
+     * @param args 命令参数
+     */
     private cmd(fun, args: string[], show = true): Promise<any> {
         return new Promise<any>((resolve) => {
             this.npmLoadCoifig().then(() => {
@@ -89,10 +89,10 @@ export class NpmDependencies {
     */
     dependenciesObjArrary: DependenciesObj[] = json
     /**
-        * 生成依赖json文件
-        * @param  {string='./dependent.json'} path
-        * @returns Promise
-        */
+    * 生成依赖json文件
+    * @param  {string='./dependent.json'} path
+    * @returns Promise
+    */
     createJsonFile(path: string = process.cwd() + '/node-dependent.json'): Promise<boolean> {
         return new Promise((resolve, reject) => {
             fs.writeFile(path, JSON.stringify(this.dependenciesObjArrary), 'utf8', () => {
@@ -111,7 +111,6 @@ export class NpmDependencies {
     */
     async get(name: string, version?: string, first = true): Promise<string[]> {
         first && (this.getArrary = []);
-        console.log(name);
 
         if (this.getArrary.indexOf(name) != -1) {
             return [];
@@ -164,8 +163,7 @@ export class NpmDependencies {
                 dependencies: []
             }
 
-            console.log(name);
-            let view: NpmList = await this.ls(version ? name + '@' + this.getVersionString(version) : name);
+            let view: NpmList = await this.cmd('ls', [version ? name + '@' + this.getVersionString(version) : name]);
             view = this.findNpmView(view, name, version);
 
             let depArrary: {
@@ -190,6 +188,7 @@ export class NpmDependencies {
                 dependencies: depArrary
             };
 
+            util.log(name);
             await dep.src(dependenciesObj.path + '/**/*.js');
             let depFileArray = dep.getBeDependenciesArr(ph.join(dependenciesObj.path, dependenciesObj.main))
                 .filter(value => !depArrary.find(val => value === val.name));

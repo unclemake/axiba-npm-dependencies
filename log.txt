@@ -4,8 +4,8 @@
 ？ versionContrast
 √ versionContrast
 
-？ getDependenciesObj
-√ getDependenciesObj
+？ get
+√ get
 
 ？ findNpmView
 √ findNpmView
