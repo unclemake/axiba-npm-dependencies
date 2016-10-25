@@ -31,7 +31,7 @@ class NpmDependencies {
         * @param  模块名称
         */
         this.dependenciesObjArrary = json;
-        this.getArrary = [];
+        this.getArray = [];
     }
     /**
      * 加载npm配置
@@ -76,6 +76,21 @@ class NpmDependencies {
         });
     }
     /**
+     * 依赖对象转依赖数组
+     * @param  {{[key:string]:string}} dependencies
+     * @returns string
+     */
+    dependenciesObjToArr(dependencies) {
+        let arr = [];
+        for (let name in dependencies) {
+            let version = dependencies[name];
+            arr.push({
+                name: name, version: version
+            });
+        }
+        return arr;
+    }
+    /**
     * 获取所有文件列表
     * @param  {string} name 名称
     * @param  {string} version? 版本
@@ -83,11 +98,11 @@ class NpmDependencies {
     */
     get(name, version, first = true) {
         return __awaiter(this, void 0, Promise, function* () {
-            first && (this.getArrary = []);
-            if (this.getArrary.indexOf(name) != -1) {
+            first && (this.getArray = []);
+            if (this.getArray.indexOf(name) != -1) {
                 return [];
             }
-            this.getArrary.push(name);
+            this.getArray.push(name);
             let dependenciesObj = yield this.getDependenciesObj(name, version);
             let pathString = dependenciesObj.fileArray;
             for (let key in dependenciesObj.dependencies) {
@@ -95,6 +110,7 @@ class NpmDependencies {
                 pathString = pathString.concat(yield this.get(element.name, element.version, false));
             }
             if (first) {
+                this.createJsonFile();
                 return [...new Set(pathString)];
             }
             else {
@@ -148,9 +164,9 @@ class NpmDependencies {
                     version: view.version,
                     dependencies: depArrary
                 };
-                axiba_util_1.default.log(name);
+                axiba_util_1.default.write(name);
                 yield axiba_dependencies_1.default.src(dependenciesObj.path + '/**/*.js');
-                let depFileArray = axiba_dependencies_1.default.getBeDependenciesArr(ph.join(dependenciesObj.path, dependenciesObj.main))
+                let depFileArray = axiba_dependencies_1.default.getDependenciesArr(ph.join(dependenciesObj.path, dependenciesObj.main))
                     .filter(value => !depArrary.find(val => value === val.name));
                 dependenciesObj.fileArray = depFileArray;
                 this.dependenciesObjArrary.push(dependenciesObj);

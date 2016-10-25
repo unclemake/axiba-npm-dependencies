@@ -102,7 +102,30 @@ export class NpmDependencies {
     }
 
 
-    getArrary = [];
+    /**
+     * 依赖对象转依赖数组
+     * @param  {{[key:string]:string}} dependencies
+     * @returns string
+     */
+    dependenciesObjToArr(dependencies: {
+        [key: string]: string
+    }): {
+        name: string,
+        version: string,
+    }[] {
+
+        let arr = [];
+        for (let name in dependencies) {
+            let version = dependencies[name];
+            arr.push({
+                name, version
+            })
+        }
+        return arr;
+    }
+
+
+    private getArray = [];
     /**
     * 获取所有文件列表
     * @param  {string} name 名称
@@ -110,13 +133,13 @@ export class NpmDependencies {
     * @returns Promise<DependenciesObj>
     */
     async get(name: string, version?: string, first = true): Promise<string[]> {
-        first && (this.getArrary = []);
+        first && (this.getArray = []);
 
-        if (this.getArrary.indexOf(name) != -1) {
+        if (this.getArray.indexOf(name) != -1) {
             return [];
         }
 
-        this.getArrary.push(name);
+        this.getArray.push(name);
 
         let dependenciesObj = await this.getDependenciesObj(name, version);
         let pathString: string[] = dependenciesObj.fileArray;
@@ -127,6 +150,7 @@ export class NpmDependencies {
         }
 
         if (first) {
+            this.createJsonFile();
             return [...new Set(pathString)];
         } else {
             return pathString;
@@ -188,9 +212,9 @@ export class NpmDependencies {
                 dependencies: depArrary
             };
 
-            util.log(name);
+            util.write(name);
             await dep.src(dependenciesObj.path + '/**/*.js');
-            let depFileArray = dep.getBeDependenciesArr(ph.join(dependenciesObj.path, dependenciesObj.main))
+            let depFileArray = dep.getDependenciesArr(ph.join(dependenciesObj.path, dependenciesObj.main))
                 .filter(value => !depArrary.find(val => value === val.name));
 
             dependenciesObj.fileArray = depFileArray;

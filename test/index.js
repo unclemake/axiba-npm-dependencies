@@ -33,8 +33,8 @@ axiba_unit_test_1.describeClass('测试', index_1.default, () => {
     //     });
     // });
     axiba_unit_test_1.itClass('get', () => {
-        axiba_unit_test_1.itAdd(['gulp'], value => {
-            return true;
+        axiba_unit_test_1.itAdd(['react'], value => {
+            return false;
         }, 9999999);
     });
     axiba_unit_test_1.itClass('findNpmView', () => {
