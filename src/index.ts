@@ -150,7 +150,6 @@ export class NpmDependencies {
         }
 
         if (first) {
-            this.createJsonFile();
             return [...new Set(pathString)];
         } else {
             return pathString;
@@ -215,7 +214,7 @@ export class NpmDependencies {
             dependenciesObj.fileArray = await this.getFileArray(dependenciesObj);
             this.dependenciesObjArrary.push(dependenciesObj);
         }
-
+        this.createJsonFile();
         return dependenciesObj;
     }
 
@@ -241,6 +240,12 @@ export class NpmDependencies {
     nodeFileArray = [{
         name: 'react',
         file: 'dist/react.min.js'
+    }, {
+        name: 'react-router',
+        file: 'umd/ReactRouter.min.js'
+    }, {
+        name: 'react-dom',
+        file: 'dist/react-dom.min.js'
     }]
 
 

@@ -36,6 +36,12 @@ class NpmDependencies {
         this.nodeFileArray = [{
                 name: 'react',
                 file: 'dist/react.min.js'
+            }, {
+                name: 'react-router',
+                file: 'umd/ReactRouter.min.js'
+            }, {
+                name: 'react-dom',
+                file: 'dist/react-dom.min.js'
             }];
     }
     /**
@@ -96,7 +102,7 @@ class NpmDependencies {
         return arr;
     }
     /**
-    * 获取所有文件列表
+    * 获取此模块所有的依赖文件列表
     * @param  {string} name 名称
     * @param  {string} version? 版本
     * @returns Promise<DependenciesObj>
@@ -115,7 +121,6 @@ class NpmDependencies {
                 pathString = pathString.concat(yield this.get(element.name, element.version, false));
             }
             if (first) {
-                this.createJsonFile();
                 return [...new Set(pathString)];
             }
             else {
@@ -173,6 +178,7 @@ class NpmDependencies {
                 dependenciesObj.fileArray = yield this.getFileArray(dependenciesObj);
                 this.dependenciesObjArrary.push(dependenciesObj);
             }
+            this.createJsonFile();
             return dependenciesObj;
         });
     }
@@ -184,7 +190,7 @@ class NpmDependencies {
         return __awaiter(this, void 0, void 0, function* () {
             let depArrary = this.nodeFileArray.find(value => value.name === dependenciesObj.name);
             if (depArrary) {
-                return [ph.join(dependenciesObj.path, depArrary.file)];
+                return [axiba_dependencies_1.default.clearPath(ph.join(dependenciesObj.path, depArrary.file))];
             }
             else {
                 yield axiba_dependencies_1.default.src(dependenciesObj.path + '/**/*.js');
