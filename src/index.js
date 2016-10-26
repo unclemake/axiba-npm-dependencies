@@ -32,6 +32,11 @@ class NpmDependencies {
         */
         this.dependenciesObjArrary = json;
         this.getArray = [];
+        /** 已经打包好的文件路径 */
+        this.nodeFileArray = [{
+                name: 'react',
+                file: 'dist/react.min.js'
+            }];
     }
     /**
      * 加载npm配置
@@ -146,6 +151,7 @@ class NpmDependencies {
                     version: '',
                     dependencies: []
                 };
+                axiba_util_1.default.log(name);
                 let view = yield this.cmd('ls', [version ? name + '@' + this.getVersionString(version) : name]);
                 view = this.findNpmView(view, name, version);
                 let depArrary = [];
@@ -164,14 +170,29 @@ class NpmDependencies {
                     version: view.version,
                     dependencies: depArrary
                 };
-                axiba_util_1.default.write(name);
-                yield axiba_dependencies_1.default.src(dependenciesObj.path + '/**/*.js');
-                let depFileArray = axiba_dependencies_1.default.getDependenciesArr(ph.join(dependenciesObj.path, dependenciesObj.main))
-                    .filter(value => !depArrary.find(val => value === val.name));
-                dependenciesObj.fileArray = depFileArray;
+                dependenciesObj.fileArray = yield this.getFileArray(dependenciesObj);
                 this.dependenciesObjArrary.push(dependenciesObj);
             }
             return dependenciesObj;
+        });
+    }
+    /**
+     * 获取此dependenciesObj 里面所有的js文件
+     * @param  {DependenciesObj} dependenciesObj
+     */
+    getFileArray(dependenciesObj) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let depArrary = this.nodeFileArray.find(value => value.name === dependenciesObj.name);
+            if (depArrary) {
+                return [ph.join(dependenciesObj.path, depArrary.file)];
+            }
+            else {
+                yield axiba_dependencies_1.default.src(dependenciesObj.path + '/**/*.js');
+                let depFileArray = axiba_dependencies_1.default.getDependenciesArr(ph.join(dependenciesObj.path, dependenciesObj.main))
+                    .filter(value => !dependenciesObj.dependencies.find(val => value === val.name));
+                depFileArray.push(axiba_dependencies_1.default.clearPath(ph.join(dependenciesObj.path, dependenciesObj.main)));
+                return depFileArray;
+            }
         });
     }
     // private isFilePath(name: string) {

@@ -127,7 +127,7 @@ export class NpmDependencies {
 
     private getArray = [];
     /**
-    * 获取所有文件列表
+    * 获取此模块所有的依赖文件列表
     * @param  {string} name 名称
     * @param  {string} version? 版本
     * @returns Promise<DependenciesObj>
@@ -185,8 +185,9 @@ export class NpmDependencies {
                 name: '',
                 version: '',
                 dependencies: []
-            }
+            };
 
+            util.log(name);
             let view: NpmList = await this.cmd('ls', [version ? name + '@' + this.getVersionString(version) : name]);
             view = this.findNpmView(view, name, version);
 
@@ -202,7 +203,6 @@ export class NpmDependencies {
                 });
             }
 
-
             dependenciesObj = {
                 path: dep.clearPath(view.path),
                 main: view.main || 'index.js',
@@ -212,18 +212,36 @@ export class NpmDependencies {
                 dependencies: depArrary
             };
 
-            util.write(name);
-            await dep.src(dependenciesObj.path + '/**/*.js');
-            let depFileArray = dep.getDependenciesArr(ph.join(dependenciesObj.path, dependenciesObj.main))
-                .filter(value => !depArrary.find(val => value === val.name));
-
-            dependenciesObj.fileArray = depFileArray;
+            dependenciesObj.fileArray = await this.getFileArray(dependenciesObj);
             this.dependenciesObjArrary.push(dependenciesObj);
         }
 
-
         return dependenciesObj;
     }
+
+    /**
+     * 获取此dependenciesObj 里面所有的js文件
+     * @param  {DependenciesObj} dependenciesObj
+     */
+    async getFileArray(dependenciesObj: DependenciesObj) {
+        let depArrary = this.nodeFileArray.find(value => value.name === dependenciesObj.name);
+        if (depArrary) {
+            return [dep.clearPath(ph.join(dependenciesObj.path, depArrary.file))];
+        } else {
+            await dep.src(dependenciesObj.path + '/**/*.js');
+            let depFileArray = dep.getDependenciesArr(ph.join(dependenciesObj.path, dependenciesObj.main))
+                //清除名别
+                .filter(value => !dependenciesObj.dependencies.find(val => value === val.name));
+            depFileArray.push(dep.clearPath(ph.join(dependenciesObj.path, dependenciesObj.main)));
+            return depFileArray;
+        }
+    }
+
+    /** 已经打包好的文件路径 */
+    nodeFileArray = [{
+        name: 'react',
+        file: 'dist/react.min.js'
+    }]
 
 
     // private isFilePath(name: string) {
