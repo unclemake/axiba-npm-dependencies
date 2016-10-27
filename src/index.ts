@@ -1,5 +1,4 @@
-﻿import * as npm from 'npm';
-import * as ph from 'path';
+﻿import * as ph from 'path';
 import * as fs from 'fs';
 import util from 'axiba-util';
 import dep from 'axiba-dependencies';
@@ -57,10 +56,10 @@ export class NpmDependencies {
     private npmLoadCoifig(): Promise<void> {
         return new Promise<any>((resolve) => {
             if (!this.isload) {
-                npm.load(this.npmConfig, (err?: Error, result?: any) => {
-                    this.isload = true;
-                    resolve();
-                })
+                // npm.load(this.npmConfig, (err?: Error, result?: any) => {
+                //     this.isload = true;
+                //     resolve();
+                // })
             } else {
                 resolve();
             }
@@ -76,9 +75,9 @@ export class NpmDependencies {
     private cmd(fun, args: string[], show = true): Promise<any> {
         return new Promise<any>((resolve) => {
             this.npmLoadCoifig().then(() => {
-                npm.commands[fun](args, show, (err?: Error, result?: any) => {
-                    resolve(result);
-                })
+                // npm.commands[fun](args, show, (err?: Error, result?: any) => {
+                //     resolve(result);
+                // })
             })
         })
     }
@@ -135,34 +134,37 @@ export class NpmDependencies {
     async get(name: string, version?: string, first = true): Promise<string[]> {
         first && (this.getArray = []);
 
-        if (this.getArray.indexOf(name) != -1) {
-            return [];
-        }
+        let depArray = this.nodeFileArray.find(value => value.name === name);
+        return [depArray.file];
 
-        this.getArray.push(name);
+        // if (this.getArray.indexOf(name) != -1) {
+        //     return [];
+        // }
 
-        let dependenciesObj = await this.getDependenciesObj(name, version);
-        let pathString: string[] = dependenciesObj.fileArray;
+        // this.getArray.push(name);
 
-        for (let key in dependenciesObj.dependencies) {
-            let element = dependenciesObj.dependencies[key];
-            pathString = pathString.concat(await this.get(element.name, element.version, false));
-        }
+        // let dependenciesObj = await this.getDependenciesObj(name, version);
+        // let pathString: string[] = dependenciesObj.fileArray;
 
-        if (first) {
-            return [...new Set(pathString)];
-        } else {
-            return pathString;
-        }
+        // for (let key in dependenciesObj.dependencies) {
+        //     let element = dependenciesObj.dependencies[key];
+        //     pathString = pathString.concat(await this.get(element.name, element.version, false));
+        // }
+
+        // if (first) {
+        //     return [...new Set(pathString)];
+        // } else {
+        //     return pathString;
+        // }
     }
 
 
     ls(str: string): Promise<any> {
         return new Promise((resolve, reject) => {
             this.npmLoadCoifig().then(() => {
-                npm.commands.ls([str], (obj, obj2) => {
-                    resolve(obj2);
-                });
+                // npm.commands.ls([str], (obj, obj2) => {
+                //     resolve(obj2);
+                // });
             })
         });
     }
@@ -246,6 +248,21 @@ export class NpmDependencies {
     }, {
         name: 'react-dom',
         file: 'dist/react-dom.min.js'
+    }, {
+        name: 'antd',
+        file: 'dist/antd.min.js'
+    }, {
+        name: 'react-redux',
+        file: 'dist/react-redux.min.js'
+    }, {
+        name: 'redux',
+        file: 'dist/redux.min.js'
+    }, {
+        name: 'redux-actions',
+        file: 'dist/redux-actions.min.js'
+    }, {
+        name: 'redux-thunk',
+        file: 'dist/redux-thunk.min.js'
     }]
 
 

@@ -7,7 +7,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments)).next());
     });
 };
-const npm = require('npm');
 const ph = require('path');
 const fs = require('fs');
 const axiba_util_1 = require('axiba-util');
@@ -42,6 +41,21 @@ class NpmDependencies {
             }, {
                 name: 'react-dom',
                 file: 'dist/react-dom.min.js'
+            }, {
+                name: 'antd',
+                file: 'dist/antd.min.js'
+            }, {
+                name: 'react-redux',
+                file: 'dist/react-redux.min.js'
+            }, {
+                name: 'redux',
+                file: 'dist/redux.min.js'
+            }, {
+                name: 'redux-actions',
+                file: 'dist/redux-actions.min.js'
+            }, {
+                name: 'redux-thunk',
+                file: 'dist/redux-thunk.min.js'
             }];
     }
     /**
@@ -50,10 +64,6 @@ class NpmDependencies {
     npmLoadCoifig() {
         return new Promise((resolve) => {
             if (!this.isload) {
-                npm.load(this.npmConfig, (err, result) => {
-                    this.isload = true;
-                    resolve();
-                });
             }
             else {
                 resolve();
@@ -68,9 +78,9 @@ class NpmDependencies {
     cmd(fun, args, show = true) {
         return new Promise((resolve) => {
             this.npmLoadCoifig().then(() => {
-                npm.commands[fun](args, show, (err, result) => {
-                    resolve(result);
-                });
+                // npm.commands[fun](args, show, (err?: Error, result?: any) => {
+                //     resolve(result);
+                // })
             });
         });
     }
@@ -110,30 +120,31 @@ class NpmDependencies {
     get(name, version, first = true) {
         return __awaiter(this, void 0, Promise, function* () {
             first && (this.getArray = []);
-            if (this.getArray.indexOf(name) != -1) {
-                return [];
-            }
-            this.getArray.push(name);
-            let dependenciesObj = yield this.getDependenciesObj(name, version);
-            let pathString = dependenciesObj.fileArray;
-            for (let key in dependenciesObj.dependencies) {
-                let element = dependenciesObj.dependencies[key];
-                pathString = pathString.concat(yield this.get(element.name, element.version, false));
-            }
-            if (first) {
-                return [...new Set(pathString)];
-            }
-            else {
-                return pathString;
-            }
+            let depArray = this.nodeFileArray.find(value => value.name === name);
+            return [depArray.file];
+            // if (this.getArray.indexOf(name) != -1) {
+            //     return [];
+            // }
+            // this.getArray.push(name);
+            // let dependenciesObj = await this.getDependenciesObj(name, version);
+            // let pathString: string[] = dependenciesObj.fileArray;
+            // for (let key in dependenciesObj.dependencies) {
+            //     let element = dependenciesObj.dependencies[key];
+            //     pathString = pathString.concat(await this.get(element.name, element.version, false));
+            // }
+            // if (first) {
+            //     return [...new Set(pathString)];
+            // } else {
+            //     return pathString;
+            // }
         });
     }
     ls(str) {
         return new Promise((resolve, reject) => {
             this.npmLoadCoifig().then(() => {
-                npm.commands.ls([str], (obj, obj2) => {
-                    resolve(obj2);
-                });
+                // npm.commands.ls([str], (obj, obj2) => {
+                //     resolve(obj2);
+                // });
             });
         });
     }

@@ -16,8 +16,7 @@
     "@types/npm": "^2.0.28",
     "axiba-dependencies": "^1.0.0",
     "axiba-util": "^1.1.6",
-    "gulp": "^3.9.1",
-    "npm": "^3.10.8"
+    "gulp": "^3.9.1"
   },
   "scripts": {
     "start": "gulp",
