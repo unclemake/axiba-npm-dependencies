@@ -66,5 +66,4 @@ axiba_unit_test_1.describeClass('测试', index_1.default, () => {
     // });
 });
 axiba_unit_test_1.run();
-
 //# sourceMappingURL=index.js.map

@@ -1,6 +1,6 @@
 {
   "name": "axiba-npm-dependencies",
-  "version": "1.0.0",
+  "version": "0.0.1-dev",
   "description": "",
   "typings": "src/index.ts",
   "main": "src/index.js",
@@ -13,7 +13,6 @@
     "react": "^15.3.2"
   },
   "dependencies": {
-    "@types/npm": "^2.0.28",
     "axiba-dependencies": "^1.0.0",
     "axiba-util": "^1.1.6",
     "gulp": "^3.9.1"

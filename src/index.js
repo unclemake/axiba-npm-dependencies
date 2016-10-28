@@ -34,28 +34,31 @@ class NpmDependencies {
         /** 已经打包好的文件路径 */
         this.nodeFileArray = [{
                 name: 'react',
-                file: 'dist/react.min.js'
+                file: 'node_modules/react/dist/react.min.js'
             }, {
                 name: 'react-router',
-                file: 'umd/ReactRouter.min.js'
+                file: 'node_modules/react-router/umd/ReactRouter.min.js'
             }, {
                 name: 'react-dom',
-                file: 'dist/react-dom.min.js'
+                file: 'node_modules/react-dom/dist/react-dom.min.js'
             }, {
                 name: 'antd',
-                file: 'dist/antd.min.js'
+                file: 'node_modules/antd/dist/antd.min.js'
             }, {
                 name: 'react-redux',
-                file: 'dist/react-redux.min.js'
+                file: 'node_modules/react-redux/dist/react-redux.min.js'
             }, {
                 name: 'redux',
-                file: 'dist/redux.min.js'
+                file: 'node_modules/redux/dist/redux.min.js'
             }, {
                 name: 'redux-actions',
-                file: 'dist/redux-actions.min.js'
+                file: 'node_modules/redux-actions/dist/redux-actions.min.js'
             }, {
                 name: 'redux-thunk',
-                file: 'dist/redux-thunk.min.js'
+                file: 'node_modules/redux-thunk/dist/redux-thunk.min.js'
+            }, {
+                name: 'superagent',
+                file: 'node_modules/superagent/superagent.js'
             }];
     }
     /**
