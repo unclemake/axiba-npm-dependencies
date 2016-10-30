@@ -9,8 +9,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 const ph = require('path');
 const fs = require('fs');
-const axiba_util_1 = require('axiba-util');
+const aGulp = require('axiba-gulp');
 const axiba_dependencies_1 = require('axiba-dependencies');
+const gulp = require('gulp');
+const Vinyl = require('vinyl');
 let json;
 try {
     json = require(process.cwd() + '/node-dependent.json');
@@ -23,69 +25,43 @@ catch (error) {
  */
 class NpmDependencies {
     constructor() {
-        this.isload = false;
+        this.nodeModulePath = 'node_modules';
         this.npmConfig = require(process.cwd() + '/package.json');
         /**
         * 记录nodejs模块依赖列表
         * @param  模块名称
         */
-        this.dependenciesObjArrary = json;
-        this.getArray = [];
+        this.dependenciesObjArrary = [];
         /** 已经打包好的文件路径 */
         this.nodeFileArray = [{
                 name: 'react',
-                file: 'node_modules/react/dist/react.min.js'
+                file: 'dist/react.min.js'
             }, {
                 name: 'react-router',
-                file: 'node_modules/react-router/umd/ReactRouter.min.js'
+                file: 'umd/ReactRouter.min.js'
             }, {
                 name: 'react-dom',
-                file: 'node_modules/react-dom/dist/react-dom.min.js'
+                file: 'dist/react-dom.min.js'
             }, {
                 name: 'antd',
-                file: 'node_modules/antd/dist/antd.min.js'
+                file: 'dist/antd.min.js'
             }, {
                 name: 'react-redux',
-                file: 'node_modules/react-redux/dist/react-redux.min.js'
+                file: 'dist/react-redux.min.js'
             }, {
                 name: 'redux',
-                file: 'node_modules/redux/dist/redux.min.js'
+                file: 'dist/redux.min.js'
             }, {
                 name: 'redux-actions',
-                file: 'node_modules/redux-actions/dist/redux-actions.min.js'
+                file: 'dist/redux-actions.min.js'
             }, {
                 name: 'redux-thunk',
-                file: 'node_modules/redux-thunk/dist/redux-thunk.min.js'
+                file: 'dist/redux-thunk.min.js'
             }, {
                 name: 'superagent',
-                file: 'node_modules/superagent/superagent.js'
+                file: 'superagent.js'
             }];
-    }
-    /**
-     * 加载npm配置
-     */
-    npmLoadCoifig() {
-        return new Promise((resolve) => {
-            if (!this.isload) {
-            }
-            else {
-                resolve();
-            }
-        });
-    }
-    /**
-     * promise包裹回调
-     * @param fun
-     * @param args 命令参数
-     */
-    cmd(fun, args, show = true) {
-        return new Promise((resolve) => {
-            this.npmLoadCoifig().then(() => {
-                // npm.commands[fun](args, show, (err?: Error, result?: any) => {
-                //     resolve(result);
-                // })
-            });
-        });
+        this.canAddFile = false;
     }
     /**
     * 生成依赖json文件
@@ -100,10 +76,258 @@ class NpmDependencies {
         });
     }
     /**
-     * 依赖对象转依赖数组
-     * @param  {{[key:string]:string}} dependencies
+     * 获取package
+     * @param  {string} name
+     */
+    getPackage(name, base = this.nodeModulePath) {
+        let path = `${base}/${name}`;
+        if (!fs.existsSync(path)) {
+            path = `${this.nodeModulePath}/${name}`;
+        }
+        let obj = JSON.parse(fs.readFileSync(path + '/package.json').toString());
+        obj.path = path;
+        if (obj.path === `${this.nodeModulePath}/${name}`) {
+            obj.isBase = true;
+        }
+        else {
+            obj.isBase = false;
+        }
+        return obj;
+    }
+    /**
+      * 修改文件名流插件
+      * @param  {string} extname
+      * @param {stream.Transform} name loader
+      */
+    changeExtnameLoader(path) {
+        return aGulp.makeLoader((file, enc, callback) => {
+            file.path = path;
+            callback(null, file);
+        });
+    }
+    haveMin(name) {
+        let pathObj = this.nodeFileArray.find(value => value.name === name);
+        return !!pathObj;
+    }
+    /**
+     * 获取文件流
+     * @param  {string} name
+     */
+    getFileStream(name) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let pathObj = this.nodeFileArray.find(value => value.name === name);
+            if (pathObj) {
+                return gulp.src(ph.join(this.nodeModulePath, pathObj.name, pathObj.file), {
+                    base: './'
+                }).pipe(this.changeExtnameLoader(`${this.nodeModulePath}/${name}/index.js`));
+            }
+            else {
+                let dObj = yield this.get(name);
+                let list = this.getDepArray(dObj);
+                return gulp.src(list, {
+                    base: './'
+                }).pipe(this.fileTransform(dObj))
+                    .pipe(this.addMainFile(dObj));
+            }
+        });
+    }
+    /**
+     * 添加文件 转接 main文件
+     * @param  {DependenciesObj} dObj
+     */
+    addMainFile(dObj) {
+        let self = this;
+        this.canAddFile = true;
+        return aGulp.makeLoader(function (file, a, callback) {
+            if (self.canAddFile) {
+                self.canAddFile = false;
+                if (dObj.main !== 'index.js') {
+                    let file = new Vinyl({
+                        cwd: process.cwd(),
+                        path: ph.join(dObj.path, '/index.js'),
+                        contents: new Buffer(`export = require("./${dObj.main}")`)
+                    });
+                    this.push(file);
+                }
+            }
+            callback(null, file);
+        });
+    }
+    /**
+    * 文件路径替换流
+    * @param  {string} name
+    */
+    fileTransform(dObj) {
+        let depPathArray = this.getDependentPathArray(dObj);
+        return aGulp.makeLoader((file, a, callback) => {
+            let config = axiba_dependencies_1.default.config.find(value => value.extname === '.js');
+            let content = file.contents.toString();
+            config.parserRegExpList.forEach(value => {
+                let nu = parseInt(value.match.split('$')[1]);
+                content = this.fileReplace(content, value.regExp, nu, dObj);
+            });
+            file.contents = new Buffer(content);
+            callback(null, file);
+        });
+    }
+    /**
+     * 文件路径匹配替换
+     * @param  {string} name
+     */
+    fileReplace(content, regExp, match, dObj) {
+        //解决：获取模块的文件而不是获取模块的加载问题
+        let loaderMoudle = [];
+        content = content.replace(regExp, function () {
+            let str = arguments[0];
+            let matchStr = arguments[match];
+            // 如果是别名开头
+            if (/^[^\.\/]/g.test(matchStr)) {
+                //获取别名
+                let alias = '';
+                let isAlias = axiba_dependencies_1.default.isAlias(matchStr);
+                if (isAlias) {
+                    alias = matchStr;
+                }
+                else {
+                    alias = matchStr.match(/^.+?(?=\/)/g)[0];
+                    loaderMoudle.push(alias);
+                }
+                //获取模块obj
+                let depObj = dObj.dependencies.find(value => value.name === alias);
+                if (depObj) {
+                    let path = '';
+                    if (isAlias) {
+                        path = ph.join(depObj.path, depObj.main);
+                    }
+                    else {
+                        path = depObj.path;
+                    }
+                    let url = arguments[match].replace(alias, path);
+                    str = str.replace(arguments[match], url);
+                }
+                else {
+                    return str;
+                }
+            }
+            return axiba_dependencies_1.default.clearPath(str);
+        });
+        loaderMoudle.forEach(value => {
+            content += `require("${value}");` + content;
+        });
+        return content;
+    }
+    /** 根据依赖对象 获取别名相对路径
+     * @param  {} dObj
+     * @param  {string}[]{} path
      * @returns string
      */
+    getDependentPathArray(dObj) {
+        let ary = [];
+        dObj.dependencies.forEach(value => {
+            ary.push({
+                name: value.name,
+                path: ph.join(value.path, value.name)
+            });
+        });
+        return ary;
+    }
+    /**
+     * 获取所有在模块内的依赖文件
+     * @param  {DependenciesObj} dObj
+     * @param  {} frist=true
+     */
+    getDepArray(dObj, frist = true) {
+        let depList = [];
+        if (frist || !dObj.isBase) {
+            depList = dObj.fileArray;
+        }
+        for (let key in dObj.dependencies) {
+            let element = dObj.dependencies[key];
+            depList = depList.concat(this.getDepArray(element, false));
+        }
+        if (frist) {
+            return [...new Set(depList)];
+        }
+        else {
+            return depList;
+        }
+    }
+    /**
+     * 获取所有的根目录依赖模块
+     * @param  {DependenciesObj} dObj
+     * @returns Promise
+     */
+    getBaseModules(dObj) {
+        return __awaiter(this, void 0, Promise, function* () {
+            let pathObj = this.nodeFileArray.find(value => value.name === name);
+            if (pathObj) {
+                return [dObj.name];
+            }
+            else {
+                let ary = [];
+                if (dObj.isBase) {
+                    ary.push(dObj.name);
+                }
+                for (let key in dObj.dependencies) {
+                    let element = dObj.dependencies[key];
+                    ary = ary.concat(yield this.getBaseModules(element));
+                }
+                return ary;
+            }
+        });
+    }
+    /**
+     * 获取依赖对象
+     * @param  {string} name
+     * @param  {string=this.nodeModulePath} base
+     * @returns Promise
+     */
+    get(name, base = this.nodeModulePath) {
+        return __awaiter(this, void 0, Promise, function* () {
+            //查找缓存
+            let dObj = this.dependenciesObjArrary.find(value => value.path === ph.join(base, name));
+            if (dObj) {
+                return dObj;
+            }
+            //获取npm配置
+            let packageObj = this.getPackage(name, base);
+            let dependenciesList = [];
+            for (let key in packageObj.dependencies) {
+                dependenciesList.push(key);
+            }
+            packageObj.dependencies = dependenciesList;
+            //创建node依赖对象
+            dObj = {
+                name: name,
+                path: packageObj.path,
+                isBase: packageObj.isBase,
+                main: packageObj.main || 'index.js',
+                fileArray: [],
+                dependencies: []
+            };
+            // 扫描自身文件依赖
+            yield axiba_dependencies_1.default.src(dObj.path + "/**/*.js");
+            let mainPath = axiba_dependencies_1.default.clearPath(ph.join(dObj.path, dObj.main));
+            let dependenciesArr = yield axiba_dependencies_1.default.getDependenciesArr(mainPath);
+            //赋值fileArray
+            dObj.fileArray = dependenciesArr;
+            dObj.fileArray.push(mainPath);
+            //赋值dependencies
+            for (let key in packageObj.dependencies) {
+                let element = packageObj.dependencies[key];
+                let obj = yield this.get(element, dObj.path + '/node_modules');
+                dObj.dependencies.push(obj);
+            }
+            //缓存
+            this.dependenciesObjArrary.push(dObj);
+            return dObj;
+        });
+    }
+    /**
+    * 依赖对象转依赖数组
+    * @param  {{[key:string]:string}} dependencies
+    * @returns string
+    */
     dependenciesObjToArr(dependencies) {
         let arr = [];
         for (let name in dependencies) {
@@ -113,176 +337,6 @@ class NpmDependencies {
             });
         }
         return arr;
-    }
-    /**
-    * 获取此模块所有的依赖文件列表
-    * @param  {string} name 名称
-    * @param  {string} version? 版本
-    * @returns Promise<DependenciesObj>
-    */
-    get(name, version, first = true) {
-        return __awaiter(this, void 0, Promise, function* () {
-            first && (this.getArray = []);
-            let depArray = this.nodeFileArray.find(value => value.name === name);
-            return [depArray.file];
-            // if (this.getArray.indexOf(name) != -1) {
-            //     return [];
-            // }
-            // this.getArray.push(name);
-            // let dependenciesObj = await this.getDependenciesObj(name, version);
-            // let pathString: string[] = dependenciesObj.fileArray;
-            // for (let key in dependenciesObj.dependencies) {
-            //     let element = dependenciesObj.dependencies[key];
-            //     pathString = pathString.concat(await this.get(element.name, element.version, false));
-            // }
-            // if (first) {
-            //     return [...new Set(pathString)];
-            // } else {
-            //     return pathString;
-            // }
-        });
-    }
-    ls(str) {
-        return new Promise((resolve, reject) => {
-            this.npmLoadCoifig().then(() => {
-                // npm.commands.ls([str], (obj, obj2) => {
-                //     resolve(obj2);
-                // });
-            });
-        });
-    }
-    /**
-     * 获取DependenciesObj
-     * @param  {string} name 名称
-     * @param  {string} version? 版本
-     * @returns Promise<DependenciesObj>
-     */
-    getDependenciesObj(name, version) {
-        return __awaiter(this, void 0, Promise, function* () {
-            let dependenciesObj = this.findDependenciesObj(name, version);
-            if (!dependenciesObj) {
-                yield this.npmLoadCoifig();
-                dependenciesObj = {
-                    path: '',
-                    main: '',
-                    fileArray: [],
-                    name: '',
-                    version: '',
-                    dependencies: []
-                };
-                axiba_util_1.default.log(name);
-                let view = yield this.cmd('ls', [version ? name + '@' + this.getVersionString(version) : name]);
-                view = this.findNpmView(view, name, version);
-                let depArrary = [];
-                for (let key in view._dependencies) {
-                    let version = view._dependencies[key];
-                    depArrary.push({
-                        name: key,
-                        version: version
-                    });
-                }
-                dependenciesObj = {
-                    path: axiba_dependencies_1.default.clearPath(view.path),
-                    main: view.main || 'index.js',
-                    fileArray: [],
-                    name: view.name,
-                    version: view.version,
-                    dependencies: depArrary
-                };
-                dependenciesObj.fileArray = yield this.getFileArray(dependenciesObj);
-                this.dependenciesObjArrary.push(dependenciesObj);
-            }
-            this.createJsonFile();
-            return dependenciesObj;
-        });
-    }
-    /**
-     * 获取此dependenciesObj 里面所有的js文件
-     * @param  {DependenciesObj} dependenciesObj
-     */
-    getFileArray(dependenciesObj) {
-        return __awaiter(this, void 0, void 0, function* () {
-            let depArrary = this.nodeFileArray.find(value => value.name === dependenciesObj.name);
-            if (depArrary) {
-                return [axiba_dependencies_1.default.clearPath(ph.join(dependenciesObj.path, depArrary.file))];
-            }
-            else {
-                yield axiba_dependencies_1.default.src(dependenciesObj.path + '/**/*.js');
-                let depFileArray = axiba_dependencies_1.default.getDependenciesArr(ph.join(dependenciesObj.path, dependenciesObj.main))
-                    .filter(value => !dependenciesObj.dependencies.find(val => value === val.name));
-                depFileArray.push(axiba_dependencies_1.default.clearPath(ph.join(dependenciesObj.path, dependenciesObj.main)));
-                return depFileArray;
-            }
-        });
-    }
-    // private isFilePath(name: string) {
-    //     return ['path', 'url', 'http', 'https', 'util', 'zlib', 'stream'].indexOf(name) != -1;
-    // }
-    /**
-     * 生成npm ls 查询的版本号
-     * @param  {string} value
-     * @returns string
-     */
-    getVersionString(value) {
-        let intArray = value.replace(/[^\.\d]/g, '').split('.').map(value => parseInt(value));
-        let key = value[0];
-        if (key === '^') {
-            return `">=${intArray[0]}.${intArray[1]}.${intArray[2]} <${intArray[0] + 1}.${intArray[1]}.${intArray[2]}"`;
-        }
-        else {
-            return value;
-        }
-    }
-    /**
-     * npmlist 树中找模块
-     * @param  {NpmList} npmList
-     * @param  {string} name
-     * @param  {string} version
-     * @returns NpmList
-     */
-    findNpmView(npmList, name, version) {
-        let npmListGet;
-        for (let key in npmList.dependencies) {
-            let element = npmList.dependencies[key];
-            // if (element.name === name && (!version || element.version === version)) {
-            if (element.name === name) {
-                return element;
-            }
-            npmListGet = this.findNpmView(element, name, version);
-            if (npmListGet) {
-                return npmListGet;
-            }
-        }
-        return npmListGet;
-    }
-    /**
-     * 查找已经存在的 dependenciesObj
-     * @param  {string} name
-     * @param  {string} version?
-     */
-    findDependenciesObj(name, version) {
-        if (version) {
-            return this.dependenciesObjArrary.find(value => value.name === name && this.versionContrast(version, value.version));
-        }
-        else {
-            return this.dependenciesObjArrary.find(value => value.name === name);
-        }
-    }
-    /**
-     * 对比node版本号
-     * @param  {string} keyVersion 带^的版本号
-     * @param  {string} version
-     * @returns boolean
-     */
-    versionContrast(keyVersion, version) {
-        let keyA = keyVersion.replace(/[^\.\d]/g, '').split('.').map(value => parseInt(value));
-        let vA = version.split('.').map(value => parseInt(value));
-        switch (keyVersion[0]) {
-            case '^':
-                return vA[0] == keyA[0] && (vA[1] > keyA[1] || (vA[1] == keyA[1] && vA[2] >= keyA[2]));
-            default:
-                return true;
-        }
     }
 }
 exports.NpmDependencies = NpmDependencies;

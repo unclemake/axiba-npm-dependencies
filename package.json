@@ -13,9 +13,12 @@
     "react": "^15.3.2"
   },
   "dependencies": {
+    "@types/gulp": "^3.8.32",
+    "@types/gulp-util": "^3.0.29",
     "axiba-dependencies": "^1.0.0",
     "axiba-util": "^1.1.6",
-    "gulp": "^3.9.1"
+    "gulp": "^3.9.1",
+    "gulp-util": "^3.0.7"
   },
   "scripts": {
     "start": "gulp",

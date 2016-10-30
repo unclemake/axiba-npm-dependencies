@@ -1,8 +1,11 @@
 ﻿import * as ph from 'path';
 import * as fs from 'fs';
 import util from 'axiba-util';
-import dep from 'axiba-dependencies';
-
+import * as aGulp from 'axiba-gulp';
+import fd from 'axiba-dependencies';
+import * as gulp from 'gulp';
+import * as gulpUtil from 'gulp-util';
+import Vinyl = require('vinyl');
 
 declare var require: any;
 let json;
@@ -18,27 +21,10 @@ try {
 type DependenciesObj = {
     path: string,
     main: string,
+    isBase: boolean,
     fileArray: string[],
     name: string,
-    version: string,
-    dependencies: {
-        name: string,
-        version: string,
-    }[]
-}
-
-
-interface NpmList {
-    path: string,
-    main: string,
-    name: string,
-    version: string,
-    dependencies: {
-        [key: string]: NpmList
-    },
-    _dependencies: {
-        [key: string]: string
-    }
+    dependencies: DependenciesObj[]
 }
 
 
@@ -47,46 +33,15 @@ interface NpmList {
  */
 export class NpmDependencies {
 
+    nodeModulePath = 'node_modules'
 
-    isload = false
     npmConfig = require(process.cwd() + '/package.json')
-    /**
-     * 加载npm配置
-     */
-    private npmLoadCoifig(): Promise<void> {
-        return new Promise<any>((resolve) => {
-            if (!this.isload) {
-                // npm.load(this.npmConfig, (err?: Error, result?: any) => {
-                //     this.isload = true;
-                //     resolve();
-                // })
-            } else {
-                resolve();
-            }
-        })
-    }
-
-
-    /**
-     * promise包裹回调
-     * @param fun
-     * @param args 命令参数
-     */
-    private cmd(fun, args: string[], show = true): Promise<any> {
-        return new Promise<any>((resolve) => {
-            this.npmLoadCoifig().then(() => {
-                // npm.commands[fun](args, show, (err?: Error, result?: any) => {
-                //     resolve(result);
-                // })
-            })
-        })
-    }
 
     /**
     * 记录nodejs模块依赖列表
     * @param  模块名称
     */
-    dependenciesObjArrary: DependenciesObj[] = json
+    dependenciesObjArrary: DependenciesObj[] = []
     /**
     * 生成依赖json文件
     * @param  {string='./dependent.json'} path
@@ -102,10 +57,326 @@ export class NpmDependencies {
 
 
     /**
-     * 依赖对象转依赖数组
-     * @param  {{[key:string]:string}} dependencies
+     * 获取package
+     * @param  {string} name
+     */
+    getPackage(name: string, base: string = this.nodeModulePath) {
+        let path = `${base}/${name}`;
+        if (!fs.existsSync(path)) {
+            path = `${this.nodeModulePath}/${name}`;
+        }
+
+        let obj = JSON.parse(fs.readFileSync(path + '/package.json').toString());
+        obj.path = path;
+        if (obj.path === `${this.nodeModulePath}/${name}`) {
+            obj.isBase = true;
+        } else {
+            obj.isBase = false;
+        }
+
+        return obj;
+    }
+
+
+
+    /**
+      * 修改文件名流插件
+      * @param  {string} extname
+      * @param {stream.Transform} name loader
+      */
+    changeExtnameLoader(path: string) {
+        return aGulp.makeLoader((file, enc, callback) => {
+            file.path = path;
+            callback(null, file);
+        })
+    }
+
+    haveMin(name: string) {
+        let pathObj = this.nodeFileArray.find(value => value.name === name);
+        return !!pathObj;
+    }
+    /**
+     * 获取文件流
+     * @param  {string} name
+     */
+    async getFileStream(name: string) {
+        let pathObj = this.nodeFileArray.find(value => value.name === name);
+        if (pathObj) {
+            return gulp.src(ph.join(this.nodeModulePath, pathObj.name, pathObj.file), {
+                base: './'
+            }).pipe(this.changeExtnameLoader(`${this.nodeModulePath}/${name}/index.js`));
+        } else {
+            let dObj = await this.get(name);
+            let list = this.getDepArray(dObj);
+            return gulp.src(list, {
+                base: './'
+            }).pipe(this.fileTransform(dObj))
+                .pipe(this.addMainFile(dObj));
+        }
+    }
+    /** 已经打包好的文件路径 */
+    nodeFileArray = [{
+        name: 'react',
+        file: 'dist/react.min.js'
+    }, {
+        name: 'react-router',
+        file: 'umd/ReactRouter.min.js'
+    }, {
+        name: 'react-dom',
+        file: 'dist/react-dom.min.js'
+    }, {
+        name: 'antd',
+        file: 'dist/antd.min.js'
+    }, {
+        name: 'react-redux',
+        file: 'dist/react-redux.min.js'
+    }, {
+        name: 'redux',
+        file: 'dist/redux.min.js'
+    }, {
+        name: 'redux-actions',
+        file: 'dist/redux-actions.min.js'
+    }, {
+        name: 'redux-thunk',
+        file: 'dist/redux-thunk.min.js'
+    }, {
+        name: 'superagent',
+        file: 'superagent.js'
+    }]
+
+
+    canAddFile = false;
+    /**
+     * 添加文件 转接 main文件
+     * @param  {DependenciesObj} dObj
+     */
+    addMainFile(dObj: DependenciesObj) {
+        let self = this;
+        this.canAddFile = true;
+        return aGulp.makeLoader(function (file, a, callback) {
+            if (self.canAddFile) {
+                self.canAddFile = false;
+                if (dObj.main !== 'index.js') {
+                    let file = new Vinyl({
+                        cwd: process.cwd(),
+                        path: ph.join(dObj.path, '/index.js'),
+                        contents: new Buffer(`export = require("./${dObj.main}")`)
+                    });
+                    this.push(file);
+                }
+            }
+            callback(null, file);
+        });
+    }
+
+    /**
+    * 文件路径替换流
+    * @param  {string} name
+    */
+    fileTransform(dObj: DependenciesObj) {
+        let depPathArray = this.getDependentPathArray(dObj);
+
+        return aGulp.makeLoader((file, a, callback) => {
+            let config = fd.config.find(value => value.extname === '.js');
+
+            let content = file.contents.toString();
+
+            config.parserRegExpList.forEach(value => {
+                let nu = parseInt(value.match.split('$')[1]);
+                content = this.fileReplace(content, value.regExp, nu, dObj);
+            });
+
+            file.contents = new Buffer(content);
+            callback(null, file);
+        })
+    }
+
+
+    /**
+     * 文件路径匹配替换
+     * @param  {string} name
+     */
+    fileReplace(content: string, regExp: RegExp, match: number, dObj: DependenciesObj) {
+
+        //解决：获取模块的文件而不是获取模块的加载问题
+        let loaderMoudle = [];
+        content = content.replace(regExp, function () {
+            let str: string = arguments[0];
+            let matchStr = arguments[match];
+
+            // 如果是别名开头
+            if (/^[^\.\/]/g.test(matchStr)) {
+
+                //获取别名
+                let alias = '';
+                let isAlias = fd.isAlias(matchStr);
+                if (isAlias) {
+                    alias = matchStr;
+                } else {
+                    alias = matchStr.match(/^.+?(?=\/)/g)[0];
+                    loaderMoudle.push(alias);
+                }
+
+                //获取模块obj
+                let depObj = dObj.dependencies.find(value => value.name === alias);
+                if (depObj) {
+
+                    let path = '';
+                    if (isAlias) {
+                        path = ph.join(depObj.path, depObj.main);
+                    } else {
+                        path = depObj.path;
+                    }
+
+                    let url = (arguments[match] as string).replace(alias, path);
+
+                    str = str.replace(arguments[match], url)
+                } else {
+                    return str;
+                }
+
+            }
+
+            return fd.clearPath(str);
+        } as any);
+
+        loaderMoudle.forEach(value => {
+            content += `require("${value}");` + content;
+        })
+
+        return content;
+    }
+
+    /** 根据依赖对象 获取别名相对路径
+     * @param  {} dObj
+     * @param  {string}[]{} path
      * @returns string
      */
+    getDependentPathArray(dObj: DependenciesObj): { name: string, path: string }[] {
+        let ary = [];
+
+        dObj.dependencies.forEach(value => {
+            ary.push({
+                name: value.name,
+                path: ph.join(value.path, value.name)
+            })
+        })
+
+        return ary;
+    }
+
+
+    /**
+     * 获取所有在模块内的依赖文件
+     * @param  {DependenciesObj} dObj
+     * @param  {} frist=true
+     */
+    private getDepArray(dObj: DependenciesObj, frist = true) {
+        let depList = [];
+
+        if (frist || !dObj.isBase) {
+            depList = dObj.fileArray;
+        }
+
+        for (let key in dObj.dependencies) {
+            let element: DependenciesObj = dObj.dependencies[key];
+            depList = depList.concat(this.getDepArray(element, false));
+        }
+
+        if (frist) {
+            return [...new Set(depList)];
+        } else {
+            return depList;
+        }
+    }
+
+
+    /**
+     * 获取所有的根目录依赖模块
+     * @param  {DependenciesObj} dObj
+     * @returns Promise
+     */
+    async getBaseModules(dObj: DependenciesObj): Promise<string[]> {
+        let pathObj = this.nodeFileArray.find(value => value.name === name);
+
+        if (pathObj) {
+            return [dObj.name];
+        } else {
+            let ary: string[] = [];
+            if (dObj.isBase) {
+                ary.push(dObj.name);
+            }
+            for (let key in dObj.dependencies) {
+                let element = dObj.dependencies[key];
+                ary = ary.concat(await this.getBaseModules(element));
+            }
+
+            return ary;
+        }
+    }
+
+
+    /**
+     * 获取依赖对象
+     * @param  {string} name
+     * @param  {string=this.nodeModulePath} base
+     * @returns Promise
+     */
+    async get(name: string, base: string = this.nodeModulePath): Promise<DependenciesObj> {
+
+        //查找缓存
+        let dObj = this.dependenciesObjArrary.find(value => value.path === ph.join(base, name));
+        if (dObj) {
+            return dObj;
+        }
+
+        //获取npm配置
+        let packageObj = this.getPackage(name, base);
+        let dependenciesList = [];
+        for (let key in packageObj.dependencies) {
+            dependenciesList.push(key);
+        }
+        packageObj.dependencies = dependenciesList;
+
+        //创建node依赖对象
+        dObj = {
+            name: name,
+            path: packageObj.path,
+            isBase: packageObj.isBase,
+            main: packageObj.main || 'index.js',
+            fileArray: [],
+            dependencies: []
+        };
+
+
+        // 扫描自身文件依赖
+        await fd.src(dObj.path + "/**/*.js");
+        let mainPath = fd.clearPath(ph.join(dObj.path, dObj.main));
+        let dependenciesArr = await fd.getDependenciesArr(mainPath);
+
+        //赋值fileArray
+        dObj.fileArray = dependenciesArr;
+        dObj.fileArray.push(mainPath);
+
+        //赋值dependencies
+        for (let key in packageObj.dependencies) {
+            let element = packageObj.dependencies[key];
+            let obj = await this.get(element, dObj.path + '/node_modules')
+            dObj.dependencies.push(obj);
+        }
+
+        //缓存
+        this.dependenciesObjArrary.push(dObj);
+        return dObj;
+    }
+
+
+
+    /**
+    * 依赖对象转依赖数组
+    * @param  {{[key:string]:string}} dependencies
+    * @returns string
+    */
     dependenciesObjToArr(dependencies: {
         [key: string]: string
     }): {
@@ -122,232 +393,6 @@ export class NpmDependencies {
         }
         return arr;
     }
-
-
-    private getArray = [];
-    /**
-    * 获取此模块所有的依赖文件列表
-    * @param  {string} name 名称
-    * @param  {string} version? 版本
-    * @returns Promise<DependenciesObj>
-    */
-    async get(name: string, version?: string, first = true): Promise<string[]> {
-        first && (this.getArray = []);
-
-        let depArray = this.nodeFileArray.find(value => value.name === name);
-        return [depArray.file];
-
-        // if (this.getArray.indexOf(name) != -1) {
-        //     return [];
-        // }
-
-        // this.getArray.push(name);
-
-        // let dependenciesObj = await this.getDependenciesObj(name, version);
-        // let pathString: string[] = dependenciesObj.fileArray;
-
-        // for (let key in dependenciesObj.dependencies) {
-        //     let element = dependenciesObj.dependencies[key];
-        //     pathString = pathString.concat(await this.get(element.name, element.version, false));
-        // }
-
-        // if (first) {
-        //     return [...new Set(pathString)];
-        // } else {
-        //     return pathString;
-        // }
-    }
-
-
-    ls(str: string): Promise<any> {
-        return new Promise((resolve, reject) => {
-            this.npmLoadCoifig().then(() => {
-                // npm.commands.ls([str], (obj, obj2) => {
-                //     resolve(obj2);
-                // });
-            })
-        });
-    }
-    /**
-     * 获取DependenciesObj
-     * @param  {string} name 名称
-     * @param  {string} version? 版本
-     * @returns Promise<DependenciesObj>
-     */
-    async getDependenciesObj(name: string, version?: string): Promise<DependenciesObj> {
-        let dependenciesObj = this.findDependenciesObj(name, version);
-
-        if (!dependenciesObj) {
-            await this.npmLoadCoifig();
-            dependenciesObj = {
-                path: '',
-                main: '',
-                fileArray: [],
-                name: '',
-                version: '',
-                dependencies: []
-            };
-
-            util.log(name);
-            let view: NpmList = await this.cmd('ls', [version ? name + '@' + this.getVersionString(version) : name]);
-            view = this.findNpmView(view, name, version);
-
-            let depArrary: {
-                name: string,
-                version: string,
-            }[] = [];
-            for (let key in view._dependencies) {
-                let version = view._dependencies[key];
-                depArrary.push({
-                    name: key,
-                    version: version
-                });
-            }
-
-            dependenciesObj = {
-                path: dep.clearPath(view.path),
-                main: view.main || 'index.js',
-                fileArray: [],
-                name: view.name,
-                version: view.version,
-                dependencies: depArrary
-            };
-
-            dependenciesObj.fileArray = await this.getFileArray(dependenciesObj);
-            this.dependenciesObjArrary.push(dependenciesObj);
-        }
-        this.createJsonFile();
-        return dependenciesObj;
-    }
-
-    /**
-     * 获取此dependenciesObj 里面所有的js文件
-     * @param  {DependenciesObj} dependenciesObj
-     */
-    async getFileArray(dependenciesObj: DependenciesObj) {
-        let depArrary = this.nodeFileArray.find(value => value.name === dependenciesObj.name);
-        if (depArrary) {
-            return [dep.clearPath(ph.join(dependenciesObj.path, depArrary.file))];
-        } else {
-            await dep.src(dependenciesObj.path + '/**/*.js');
-            let depFileArray = dep.getDependenciesArr(ph.join(dependenciesObj.path, dependenciesObj.main))
-                //清除名别
-                .filter(value => !dependenciesObj.dependencies.find(val => value === val.name));
-            depFileArray.push(dep.clearPath(ph.join(dependenciesObj.path, dependenciesObj.main)));
-            return depFileArray;
-        }
-    }
-
-    /** 已经打包好的文件路径 */
-    nodeFileArray = [{
-        name: 'react',
-        file: 'node_modules/react/dist/react.min.js'
-    }, {
-        name: 'react-router',
-        file: 'node_modules/react-router/umd/ReactRouter.min.js'
-    }, {
-        name: 'react-dom',
-        file: 'node_modules/react-dom/dist/react-dom.min.js'
-    }, {
-        name: 'antd',
-        file: 'node_modules/antd/dist/antd.min.js'
-    }, {
-        name: 'react-redux',
-        file: 'node_modules/react-redux/dist/react-redux.min.js'
-    }, {
-        name: 'redux',
-        file: 'node_modules/redux/dist/redux.min.js'
-    }, {
-        name: 'redux-actions',
-        file: 'node_modules/redux-actions/dist/redux-actions.min.js'
-    }, {
-        name: 'redux-thunk',
-        file: 'node_modules/redux-thunk/dist/redux-thunk.min.js'
-    }, {
-        name: 'superagent',
-        file: 'node_modules/superagent/superagent.js'
-    }]
-
-
-    // private isFilePath(name: string) {
-    //     return ['path', 'url', 'http', 'https', 'util', 'zlib', 'stream'].indexOf(name) != -1;
-    // }
-
-
-    /**
-     * 生成npm ls 查询的版本号
-     * @param  {string} value
-     * @returns string
-     */
-    getVersionString(value: string): string {
-        let intArray: number[] = value.replace(/[^\.\d]/g, '').split('.').map(value => parseInt(value));
-        let key = value[0];
-        if (key === '^') {
-            return `">=${intArray[0]}.${intArray[1]}.${intArray[2]} <${intArray[0] + 1}.${intArray[1]}.${intArray[2]}"`;
-        } else {
-            return value;
-        }
-    }
-
-
-    /**
-     * npmlist 树中找模块
-     * @param  {NpmList} npmList
-     * @param  {string} name
-     * @param  {string} version
-     * @returns NpmList
-     */
-    private findNpmView(npmList: NpmList, name: string, version: string): NpmList {
-        let npmListGet: NpmList;
-
-        for (let key in npmList.dependencies) {
-            let element = npmList.dependencies[key];
-
-            // if (element.name === name && (!version || element.version === version)) {
-            if (element.name === name) {
-                return element;
-            }
-
-            npmListGet = this.findNpmView(element, name, version);
-            if (npmListGet) {
-                return npmListGet;
-            }
-        }
-
-        return npmListGet;
-    }
-
-
-    /**
-     * 查找已经存在的 dependenciesObj
-     * @param  {string} name
-     * @param  {string} version?
-     */
-    private findDependenciesObj(name: string, version?: string) {
-        if (version) {
-            return this.dependenciesObjArrary.find(value => value.name === name && this.versionContrast(version, value.version));
-        } else {
-            return this.dependenciesObjArrary.find(value => value.name === name);
-        }
-    }
-
-    /**
-     * 对比node版本号
-     * @param  {string} keyVersion 带^的版本号
-     * @param  {string} version
-     * @returns boolean
-     */
-    versionContrast(keyVersion: string, version: string): boolean {
-        let keyA: number[] = keyVersion.replace(/[^\.\d]/g, '').split('.').map(value => parseInt(value));
-        let vA: number[] = version.split('.').map(value => parseInt(value));
-        switch (keyVersion[0]) {
-            case '^':
-                return vA[0] == keyA[0] && (vA[1] > keyA[1] || (vA[1] == keyA[1] && vA[2] >= keyA[2]));
-            default:
-                return true;
-        }
-    }
-
 }
 
 
