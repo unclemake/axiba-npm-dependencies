@@ -9,17 +9,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 const ph = require('path');
 const fs = require('fs');
+const axiba_util_1 = require('axiba-util');
 const aGulp = require('axiba-gulp');
 const axiba_dependencies_1 = require('axiba-dependencies');
 const gulp = require('gulp');
 const Vinyl = require('vinyl');
-let json;
-try {
-    json = require(process.cwd() + '/node-dependent.json');
-}
-catch (error) {
-    json = [];
-}
 /**
  * 获取npm依赖
  */
@@ -43,9 +37,6 @@ class NpmDependencies {
                 name: 'react-dom',
                 file: 'dist/react-dom.min.js'
             }, {
-                name: 'antd',
-                file: 'dist/antd.min.js'
-            }, {
                 name: 'react-redux',
                 file: 'dist/react-redux.min.js'
             }, {
@@ -62,37 +53,19 @@ class NpmDependencies {
                 file: 'superagent.js'
             }];
         this.canAddFile = false;
+        this.modulesDepArr = [];
     }
     /**
-    * 生成依赖json文件
-    * @param  {string='./dependent.json'} path
-    * @returns Promise
-    */
+* 生成依赖json文件
+* @param  {string='./dependent.json'} path
+* @returns Promise
+*/
     createJsonFile(path = process.cwd() + '/node-dependent.json') {
         return new Promise((resolve, reject) => {
             fs.writeFile(path, JSON.stringify(this.dependenciesObjArrary), 'utf8', () => {
                 resolve();
             });
         });
-    }
-    /**
-     * 获取package
-     * @param  {string} name
-     */
-    getPackage(name, base = this.nodeModulePath) {
-        let path = `${base}/${name}`;
-        if (!fs.existsSync(path)) {
-            path = `${this.nodeModulePath}/${name}`;
-        }
-        let obj = JSON.parse(fs.readFileSync(path + '/package.json').toString());
-        obj.path = path;
-        if (obj.path === `${this.nodeModulePath}/${name}`) {
-            obj.isBase = true;
-        }
-        else {
-            obj.isBase = false;
-        }
-        return obj;
     }
     /**
       * 修改文件名流插件
@@ -115,6 +88,8 @@ class NpmDependencies {
      */
     getFileStream(name) {
         return __awaiter(this, void 0, void 0, function* () {
+            if (name === '') {
+            }
             let pathObj = this.nodeFileArray.find(value => value.name === name);
             if (pathObj) {
                 return gulp.src(ph.join(this.nodeModulePath, pathObj.name, pathObj.file), {
@@ -142,10 +117,14 @@ class NpmDependencies {
             if (self.canAddFile) {
                 self.canAddFile = false;
                 if (dObj.main !== 'index.js') {
+                    let mainPath = dObj.main;
+                    if (mainPath.indexOf('./') !== 0) {
+                        mainPath = './' + mainPath;
+                    }
                     let file = new Vinyl({
                         cwd: process.cwd(),
                         path: ph.join(dObj.path, '/index.js'),
-                        contents: new Buffer(`export = require("./${dObj.main}")`)
+                        contents: new Buffer(`module.exports = require("${mainPath}");`)
                     });
                     this.push(file);
                 }
@@ -184,7 +163,7 @@ class NpmDependencies {
             if (/^[^\.\/]/g.test(matchStr)) {
                 //获取别名
                 let alias = '';
-                let isAlias = axiba_dependencies_1.default.isAlias(matchStr);
+                let isAlias = !matchStr.match(/[\/\\]/g);
                 if (isAlias) {
                     alias = matchStr;
                 }
@@ -209,10 +188,10 @@ class NpmDependencies {
                     return str;
                 }
             }
-            return axiba_dependencies_1.default.clearPath(str);
+            return str;
         });
         loaderMoudle.forEach(value => {
-            content += `require("${value}");` + content;
+            content += `require("${value}");`;
         });
         return content;
     }
@@ -257,9 +236,19 @@ class NpmDependencies {
      * @param  {DependenciesObj} dObj
      * @returns Promise
      */
-    getBaseModules(dObj) {
+    getModulesDep(dObj, frist = true) {
         return __awaiter(this, void 0, Promise, function* () {
-            let pathObj = this.nodeFileArray.find(value => value.name === name);
+            if (frist) {
+                this.modulesDepArr = [];
+            }
+            if (this.modulesDepArr.find(value => value === dObj.path)) {
+                return [];
+            }
+            this.modulesDepArr.push(dObj.path);
+            if (dObj.name === 'rc-menu') {
+                let a = 1;
+            }
+            let pathObj = this.nodeFileArray.find(value => value.name === dObj.name);
             if (pathObj) {
                 return [dObj.name];
             }
@@ -270,11 +259,36 @@ class NpmDependencies {
                 }
                 for (let key in dObj.dependencies) {
                     let element = dObj.dependencies[key];
-                    ary = ary.concat(yield this.getBaseModules(element));
+                    let dObjD = this.dependenciesObjArrary.find(value => value.path === element.path);
+                    if (!dObjD) {
+                        throw '';
+                    }
+                    ary = ary.concat(yield this.getModulesDep(dObjD, false));
                 }
                 return ary;
             }
         });
+    }
+    /**
+         * 获取package
+         * @param  {string} name
+         */
+    getPackage(name, base = this.nodeModulePath) {
+        let path = `${base}/${name}`;
+        if (!fs.existsSync(path)) {
+            path = `${this.nodeModulePath}/${name}`;
+        }
+        let obj = JSON.parse(fs.readFileSync(path + '/package.json').toString());
+        obj.path = path;
+        obj.main = obj.main || 'index.js';
+        obj.main = ph.extname(obj.main) ? obj.main : (obj.main + '.js');
+        if (obj.path === `${this.nodeModulePath}/${name}`) {
+            obj.isBase = true;
+        }
+        else {
+            obj.isBase = false;
+        }
+        return obj;
     }
     /**
      * 获取依赖对象
@@ -285,10 +299,11 @@ class NpmDependencies {
     get(name, base = this.nodeModulePath) {
         return __awaiter(this, void 0, Promise, function* () {
             //查找缓存
-            let dObj = this.dependenciesObjArrary.find(value => value.path === ph.join(base, name));
+            let dObj = this.dependenciesObjArrary.find(value => value.path === `${this.nodeModulePath}/${name}`);
             if (dObj) {
                 return dObj;
             }
+            axiba_util_1.default.write(`扫描node模块:${name}`);
             //获取npm配置
             let packageObj = this.getPackage(name, base);
             let dependenciesList = [];
@@ -305,6 +320,8 @@ class NpmDependencies {
                 fileArray: [],
                 dependencies: []
             };
+            //缓存
+            this.dependenciesObjArrary.push(dObj);
             // 扫描自身文件依赖
             yield axiba_dependencies_1.default.src(dObj.path + "/**/*.js");
             let mainPath = axiba_dependencies_1.default.clearPath(ph.join(dObj.path, dObj.main));
@@ -314,12 +331,12 @@ class NpmDependencies {
             dObj.fileArray.push(mainPath);
             //赋值dependencies
             for (let key in packageObj.dependencies) {
-                let element = packageObj.dependencies[key];
-                let obj = yield this.get(element, dObj.path + '/node_modules');
+                let name = packageObj.dependencies[key];
+                let obj = yield this.get(name, dObj.path + '/node_modules');
+                obj = Object.assign({}, obj);
+                obj.dependencies = [];
                 dObj.dependencies.push(obj);
             }
-            //缓存
-            this.dependenciesObjArrary.push(dObj);
             return dObj;
         });
     }

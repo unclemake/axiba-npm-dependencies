@@ -5,11 +5,12 @@
   "typings": "src/index.ts",
   "main": "src/index.js",
   "devDependencies": {
+    "antd": "^2.2.0",
+    "axiba-unit-test": "^1.0.11",
     "gulp": "^3.9.1",
     "gulp-jsdoc3": "^0.3.0",
     "gulp-sourcemaps": "^2.1.1",
     "gulp-typescript": "^2.13.6",
-    "axiba-unit-test": "^1.0.11",
     "react": "^15.3.2"
   },
   "dependencies": {

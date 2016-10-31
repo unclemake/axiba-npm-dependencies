@@ -1,15 +1,15 @@
-？ fileReplace
-× fileReplace
+？ getModulesDep
+× getModulesDep
 
-？ getFileStream
-√ getFileStream
+？ createJsonFile
+√ createJsonFile
 
 
 全部:2  通过:1 未通过: 1
 
 ----错误----
-fileReplace
-1: 判断错误,返回值:"require(\"node_modules/gulp/gulp.js\");require(\"node_modules/gulp/ksss.js\");require(\"gulp\");require(\"node_modules/gulp/gulp.js\");require(\"node_modules/gulp/ksss.js\");"
+getModulesDep
+1: TypeError: Cannot read property 'path' of undefined
 ----错误----
 
 ______________________________  
