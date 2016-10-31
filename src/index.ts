@@ -381,6 +381,11 @@ export class NpmDependencies {
         await fd.src(dObj.path + "/**/*.js");
         let mainPath = fd.clearPath(ph.join(dObj.path, dObj.main));
         let dependenciesArr = await fd.getDependenciesArr(mainPath);
+        if (!dependenciesArr.length) {
+            dependenciesArr = fd.dependenciesArray
+                .filter(value => value.path.indexOf(fd.clearPath(dObj.path)) !== -1)
+                .map(value => value.path)
+        }
         //赋值fileArray
         dObj.fileArray = dependenciesArr;
         dObj.fileArray.push(mainPath);

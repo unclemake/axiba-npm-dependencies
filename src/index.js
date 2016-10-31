@@ -326,6 +326,11 @@ class NpmDependencies {
             yield axiba_dependencies_1.default.src(dObj.path + "/**/*.js");
             let mainPath = axiba_dependencies_1.default.clearPath(ph.join(dObj.path, dObj.main));
             let dependenciesArr = yield axiba_dependencies_1.default.getDependenciesArr(mainPath);
+            if (!dependenciesArr.length) {
+                dependenciesArr = axiba_dependencies_1.default.dependenciesArray
+                    .filter(value => value.path.indexOf(axiba_dependencies_1.default.clearPath(dObj.path)) !== -1)
+                    .map(value => value.path);
+            }
             //赋值fileArray
             dObj.fileArray = dependenciesArr;
             dObj.fileArray.push(mainPath);
