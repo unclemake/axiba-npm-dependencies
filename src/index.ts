@@ -23,6 +23,7 @@ type DependenciesObj = {
     main: string,
     isBase: boolean,
     fileArray: string[],
+    allFileArray: string[],
     name: string,
     dependencies: DependenciesObj[]
 }
@@ -43,10 +44,10 @@ export class NpmDependencies {
     */
     dependenciesObjArrary: DependenciesObj[] = []
     /**
-* 生成依赖json文件
-* @param  {string='./dependent.json'} path
-* @returns Promise
-*/
+    * 生成依赖json文件
+    * @param  {string='./dependent.json'} path
+    * @returns Promise
+    */
     createJsonFile(path: string = process.cwd() + '/node-dependent.json'): Promise<boolean> {
         return new Promise((resolve, reject) => {
             fs.writeFile(path, JSON.stringify(this.dependenciesObjArrary), 'utf8', () => {
@@ -77,9 +78,6 @@ export class NpmDependencies {
      * @param  {string} name
      */
     async getFileStream(name: string) {
-        if (name === '') {
-
-        }
         let pathObj = this.nodeFileArray.find(value => value.name === name);
         if (pathObj) {
             return gulp.src(ph.join(this.nodeModulePath, pathObj.name, pathObj.file), {
@@ -94,8 +92,32 @@ export class NpmDependencies {
                 .pipe(this.addMainFile(dObj));
         }
     }
+
+    /**
+    * 获取文件流
+    * @param  {string} name
+    */
+    async getAllFileStream(name: string) {
+        let pathObj = this.nodeFileArray.find(value => value.name === name);
+        if (pathObj) {
+            return gulp.src(ph.join(this.nodeModulePath, pathObj.name, pathObj.file), {
+                base: './'
+            }).pipe(this.changeExtnameLoader(`${this.nodeModulePath}/${name}/index.js`));
+        } else {
+            let dObj = await this.get(name);
+            let list = dObj.allFileArray;
+            return gulp.src(list, {
+                base: './'
+            }).pipe(this.fileTransform(dObj))
+                .pipe(this.addMainFile(dObj));
+        }
+    }
+
     /** 已经打包好的文件路径 */
     nodeFileArray = [{
+        name: 'antd',
+        file: 'dist/antd.min.js'
+    }, {
         name: 'react',
         file: 'dist/react.min.js'
     }, {
@@ -160,13 +182,17 @@ export class NpmDependencies {
         let depPathArray = this.getDependentPathArray(dObj);
 
         return aGulp.makeLoader((file, a, callback) => {
+            if (!file.contents) {
+                return callback();
+            }
+
             let config = fd.config.find(value => value.extname === '.js');
 
             let content = file.contents.toString();
 
             config.parserRegExpList.forEach(value => {
                 let nu = parseInt(value.match.split('$')[1]);
-                content = this.fileReplace(content, value.regExp, nu, dObj);
+                content = this.fileReplace(content, value.regExp, nu, dObj, file.path);
             });
 
             file.contents = new Buffer(content);
@@ -179,17 +205,20 @@ export class NpmDependencies {
      * 文件路径匹配替换
      * @param  {string} name
      */
-    fileReplace(content: string, regExp: RegExp, match: number, dObj: DependenciesObj) {
+    fileReplace(content: string, regExp: RegExp, match: number, dObj: DependenciesObj, path: string) {
 
         //解决：获取模块的文件而不是获取模块的加载问题
         let loaderMoudle = [];
         content = content.replace(regExp, function () {
+            //匹配的全部
             let str: string = arguments[0];
+            //匹配的路径名
             let matchStr = arguments[match];
+            //替换后的名字
+            let url = matchStr;
 
             // 如果是别名开头
             if (/^[^\.\/]/g.test(matchStr)) {
-
                 //获取别名
                 let alias = '';
                 let isAlias = !matchStr.match(/[\/\\]/g);
@@ -199,6 +228,7 @@ export class NpmDependencies {
                     alias = matchStr.match(/^.+?(?=\/)/g)[0];
                     loaderMoudle.push(alias);
                 }
+
 
                 //获取模块obj
                 let depObj = dObj.dependencies.find(value => value.name === alias);
@@ -211,24 +241,61 @@ export class NpmDependencies {
                         path = depObj.path;
                     }
 
-                    let url = (arguments[match] as string).replace(alias, path);
+                    url = (matchStr as string).replace(alias, path);
 
-                    str = str.replace(arguments[match], url)
                 } else {
                     return str;
                 }
-
+            } else {
+                if (url === '../icon') {
+                    let a = '1';
+                    let b = "2";
+                }
+                url = fd.clearPath(ph.join(ph.dirname(path), matchStr));
             }
 
+            try {
+                let extname = ph.extname(url);
+                let stats = fs.statSync(url);
+
+                if (fs.existsSync(url + '.js')) {
+                    url = url + '.js';
+                } else {
+                    if (stats.isFile()) {
+                        if (extname) {
+                            let basename = ph.basename(url);
+                            let dirname = ph.dirname(url);
+                            let fsFile = fs.readdirSync(url);
+
+                            url = dirname + '/' + fsFile.find(value => {
+                                let extname = ph.extname(value);
+                                return value == basename + extname;
+                            });
+                        }
+
+                    } else {
+                        url = url + '/index.js';
+                    }
+                }
+            } catch (error) {
+                console.log(url);
+                console.log(path, matchStr);
+            }
+
+            str = fd.clearPath(str.replace(matchStr, url));
             return str;
         } as any);
 
-        loaderMoudle.forEach(value => {
-            content += `require("${value}");`;
-        })
-
         return content;
     }
+
+    pathJudge(path) {
+        let extname = ph.extname(path);
+        let dirname = ph.dirname(path);
+        let fsFile = fs.readdirSync(dirname);
+
+    }
+
 
     /** 根据依赖对象 获取别名相对路径
      * @param  {} dObj
@@ -372,6 +439,7 @@ export class NpmDependencies {
             isBase: packageObj.isBase,
             main: packageObj.main || 'index.js',
             fileArray: [],
+            allFileArray: [],
             dependencies: []
         };
         //缓存
@@ -381,17 +449,21 @@ export class NpmDependencies {
         await fd.src(dObj.path + "/**/*.js");
         let mainPath = fd.clearPath(ph.join(dObj.path, dObj.main));
         let dependenciesArr = await fd.getDependenciesArr(mainPath);
-        if (!dependenciesArr.length) {
-            dependenciesArr = fd.dependenciesArray
-                .filter(value => value.path.indexOf(fd.clearPath(dObj.path)) !== -1)
-                .map(value => value.path)
+
+        if (name === 'omit.js') {
+            let a = 1;
         }
+
         //赋值fileArray
         dObj.fileArray = dependenciesArr;
         dObj.fileArray.push(mainPath);
 
-        //赋值dependencies
+        //赋值allFileArray
+        dObj.allFileArray = fd.dependenciesArray
+            .filter(value => value.path.indexOf(fd.clearPath(dObj.path)) !== -1)
+            .map(value => value.path);
 
+        //赋值dependencies
         for (let key in packageObj.dependencies) {
             let name = packageObj.dependencies[key];
             let obj = await this.get(name, dObj.path + '/node_modules');
