@@ -19,44 +19,55 @@ const Vinyl = require('vinyl');
  */
 class NpmDependencies {
     constructor() {
-        this.nodeModulePath = 'node_modules';
         this.npmConfig = require(process.cwd() + '/package.json');
         /**
         * 记录nodejs模块依赖列表
         * @param  模块名称
         */
         this.dependenciesObjArrary = [];
+        this.canAddFile = false;
+        this.modulesDepArr = [];
         /** 已经打包好的文件路径 */
         this.nodeFileArray = [{
                 name: 'antd',
-                file: 'dist/antd.min.js'
+                file: 'dist/antd.js',
+                minFile: 'dist/antd.min.js'
             }, {
                 name: 'react',
-                file: 'dist/react.min.js'
+                file: 'dist/react.js',
+                minFile: 'dist/react.min.js'
             }, {
                 name: 'react-router',
-                file: 'umd/ReactRouter.min.js'
+                file: 'umd/ReactRouter.js',
+                minFile: 'umd/ReactRouter.min.js'
             }, {
                 name: 'react-dom',
-                file: 'dist/react-dom.min.js'
+                file: 'dist/react-dom.js',
+                minFile: 'dist/react-dom.min.js'
             }, {
                 name: 'react-redux',
-                file: 'dist/react-redux.min.js'
+                file: 'dist/react-redux.js',
+                minFile: 'dist/react-redux.min.js'
             }, {
                 name: 'redux',
-                file: 'dist/redux.min.js'
+                file: 'dist/redux.js',
+                minFile: 'dist/redux.min.js'
             }, {
                 name: 'redux-actions',
-                file: 'dist/redux-actions.min.js'
+                file: 'dist/redux-actions.js',
+                minFile: 'dist/redux-actions.min.js'
             }, {
                 name: 'redux-thunk',
-                file: 'dist/redux-thunk.min.js'
+                file: 'dist/redux-thunk.js',
+                minFile: 'dist/redux-thunk.min.js',
             }, {
                 name: 'superagent',
                 file: 'superagent.js'
+            }, {
+                name: 'socket.io-client',
+                file: 'socket.io.js'
             }];
-        this.canAddFile = false;
-        this.modulesDepArr = [];
+        this.nodeModulePath = 'node_modules';
     }
     /**
     * 生成依赖json文件
@@ -428,6 +439,20 @@ class NpmDependencies {
             });
         }
         return arr;
+    }
+    /**
+     * 根据名字获取模块文件
+     * @param  {} name
+     */
+    getFileByName(name, min = false) {
+        let pathObj = this.nodeFileArray.find(value => value.name === name);
+        try {
+            var file = fs.readFileSync(ph.join(process.cwd(), this.nodeModulePath, pathObj.name, min ? pathObj.minFile : pathObj.file));
+        }
+        catch (error) {
+            console.log('未找到node模块:' + name);
+        }
+        return file.toString();
     }
 }
 exports.NpmDependencies = NpmDependencies;
