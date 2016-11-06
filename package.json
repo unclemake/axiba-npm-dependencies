@@ -16,10 +16,14 @@
   "dependencies": {
     "@types/gulp": "^3.8.32",
     "@types/gulp-util": "^3.0.29",
+    "@types/webpack": "^1.12.35",
     "axiba-dependencies": "^1.0.0",
+    "axiba-gulp": "0.0.2-dev",
     "axiba-util": "^1.1.6",
     "gulp": "^3.9.1",
-    "gulp-util": "^3.0.7"
+    "gulp-util": "^3.0.7",
+    "gulp-webpack": "^1.5.0",
+    "webpack": "^1.13.3"
   },
   "scripts": {
     "start": "gulp",

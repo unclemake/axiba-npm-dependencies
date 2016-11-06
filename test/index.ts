@@ -1,12 +1,10 @@
-﻿
-import npmDependent from '../src/index'
+﻿import npmDependent from '../src/index'
 import { describe, describeClass, its, run, it, itAdd, itClass } from 'axiba-unit-test';
 import Vinyl = require('vinyl');
+import * as fs from 'fs';
 
 
 (async () => {
-    let dep = await npmDependent.get('antd');
-
     describeClass('测试', npmDependent, () => {
 
         // itClass('getPackage', () => {
@@ -63,19 +61,30 @@ import Vinyl = require('vinyl');
         // });
 
 
+        // itClass('getPackFileString', () => {
+        //     itAdd([['react']], value => {
+        //         // return fs.writeFileSync('pack.js', value);
+        //     }, 9999999);
+        // });
+
+        // itClass('getModulesDep', () => {
+        //     itAdd([dep], value => {
+        //         return true;
+        //     }, 9999999);
+        // });
 
 
-        itClass('getModulesDep', () => {
-            itAdd([dep], value => {
-                return false;
+
+        // itClass('createJsonFile', () => {
+        //     itAdd([], value => true);
+        // });
+
+        itClass('webpack', () => {
+            itAdd([['react']], value => {
+                // return fs.writeFileSync('pack.js', value);
             }, 9999999);
         });
 
-
-
-        itClass('createJsonFile', () => {
-            itAdd([], value => true);
-        });
 
     })
 

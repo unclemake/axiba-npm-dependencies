@@ -10,7 +10,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 const index_1 = require('../src/index');
 const axiba_unit_test_1 = require('axiba-unit-test');
 (() => __awaiter(this, void 0, void 0, function* () {
-    let dep = yield index_1.default.get('antd');
     axiba_unit_test_1.describeClass('测试', index_1.default, () => {
         // itClass('getPackage', () => {
         //     itAdd(['react'], value => value.name === 'react');
@@ -54,13 +53,23 @@ const axiba_unit_test_1 = require('axiba-unit-test');
         //         return true;
         //     }, 9999999);
         // });
-        axiba_unit_test_1.itClass('getModulesDep', () => {
-            axiba_unit_test_1.itAdd([dep], value => {
-                return false;
+        // itClass('getPackFileString', () => {
+        //     itAdd([['react']], value => {
+        //         // return fs.writeFileSync('pack.js', value);
+        //     }, 9999999);
+        // });
+        // itClass('getModulesDep', () => {
+        //     itAdd([dep], value => {
+        //         return true;
+        //     }, 9999999);
+        // });
+        // itClass('createJsonFile', () => {
+        //     itAdd([], value => true);
+        // });
+        axiba_unit_test_1.itClass('webpack', () => {
+            axiba_unit_test_1.itAdd([['react']], value => {
+                // return fs.writeFileSync('pack.js', value);
             }, 9999999);
-        });
-        axiba_unit_test_1.itClass('createJsonFile', () => {
-            axiba_unit_test_1.itAdd([], value => true);
         });
     });
     axiba_unit_test_1.run();
