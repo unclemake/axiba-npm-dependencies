@@ -23,7 +23,7 @@ class nodePackFile {
         file: 'dist/antd.js',
         minFile: 'dist/antd.min.js'
     }, {
-        name: 'sea',
+        name: 'seajs',
         file: 'dist/sea.js',
         minFile: 'dist/sea.min.js'
     }, {
@@ -88,7 +88,12 @@ class nodePackFile {
     getFileString(name: string) {
         let pathObj = this.nodeFileArray.find(value => value.name === name);
         if (pathObj) {
-            return fs.readFileSync(ph.join(this.nodeModulePath, pathObj.name, pathObj.file)).toString();
+            try {
+                return fs.readFileSync(ph.join(this.nodeModulePath, pathObj.name, pathObj.file)).toString();
+            } catch (error) {
+                console.log(`模块${name}未找到`);
+            }
+
         } else {
             return null;
         }
@@ -100,19 +105,28 @@ class nodePackFile {
      * 根据nameArray 获取字符串
      * 
      * @param {string[]} nameArray
+     * @param {string[]} externals
      * @returns {Promise<string>}
      * 
      * @memberOf nodeFile
      */
-    async getPackFileString(nameArray: string[]): Promise<string> {
-        let packStr = await this.webpack(nameArray);
+    async getPackFileString(nameArray: string[], externals: string[] = []): Promise<string> {
+        // if (nameArray.length === 1) {
+        //     let packStr = this.getFileString(nameArray[0]);
+        //     if (packStr) {
+        //         packStr += `\ndefine("${nameArray[0]}", function (require, exports, module) {${packStr};\n})\n`;
+        //         return packStr;
+        //     }
+        // }
+
+        let packStr = await this.webpack(nameArray, externals);
         //md5模块名
         let mName = this.moduleName + this.uuid();
 
-        packStr = `define("${mName}", function (require, exports, module) {${packStr}})\n`;
+        packStr = `\ndefine("${mName}", function (require, exports, module) {module.exports =${packStr}})\n`;
 
         nameArray.forEach((value, index) => {
-            packStr += `define("${value}", function (require, exports, module) {module.exports = require('${mName}')[___${index}];})\n`;
+            packStr += `\ndefine("${value}", function (require, exports, module) {\nmodule.exports = require('${mName}')['___${index}'];\n})\n`;
         });
         return packStr;
     }
@@ -147,9 +161,9 @@ class nodePackFile {
      * 
      * @memberOf nodeFile
      */
-    webpack(nameArray: string[]): Promise<string> {
-        let entryPath = './entry.js';
-        let outputPath = './output.js';
+    webpack(nameArray: string[], externals: string[] = []): Promise<string> {
+        let entryPath = ph.join(process.cwd(), './___1entry.js');
+        let outputPath = ph.join(process.cwd(), './___1output.js');
         let entryStr = '';
 
         nameArray.forEach((value, index) => {
@@ -157,19 +171,26 @@ class nodePackFile {
         });
 
         fs.writeFileSync(entryPath, entryStr);
-        // fs.writeFileSync('output.js', '');
 
         return new Promise((resolve, reject) => {
             try {
+                let externalsObj = {};
+                externals.forEach(value => {
+                    externalsObj[value] = `require("${value}")`;
+                });
+
                 let compiler = webpack({
                     entry: entryPath,
                     output: {
-                        filename: 'output.js',
-                        path: './'
-                    }
+                        filename: '___1output.js',
+                        path: process.cwd()
+                    }, externals: externalsObj
                 });
+
                 compiler.run(function (err, stats) {
-                    let content = fs.readFileSync(ph.join(process.cwd(), outputPath)).toString();
+                    let content = fs.readFileSync(outputPath).toString();
+                    fs.unlinkSync(entryPath);
+                    fs.unlinkSync(outputPath);
                     resolve(content);
                 });
             } catch (error) {
