@@ -30,11 +30,12 @@ class nodePackFile {
                 minFile: 'dist/antd.min.js'
             }, {
                 name: 'seajs',
-                file: 'dist/sea.js',
-                minFile: 'dist/sea.min.js'
+                file: 'dist/sea-debug.js',
+                minFile: 'dist/sea.js'
             }, {
                 name: 'seajs-css',
-                file: 'dist/seajs-css.js'
+                file: 'dist/seajs-css-debug.js',
+                minFile: 'dist/seajs-css.js'
             }, {
                 name: 'react',
                 file: 'dist/react.js',
