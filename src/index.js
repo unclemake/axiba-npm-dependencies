@@ -99,7 +99,7 @@ class nodePackFile {
                 return fs.readFileSync(ph.join(this.nodeModulePath, pathObj.name, pathObj.file)).toString();
             }
             catch (error) {
-                console.log(`模块${name}未找到`);
+                return null;
             }
         }
         else {
@@ -117,13 +117,6 @@ class nodePackFile {
      */
     getPackFileString(nameArray, externals = []) {
         return __awaiter(this, void 0, Promise, function* () {
-            // if (nameArray.length === 1) {
-            //     let packStr = this.getFileString(nameArray[0]);
-            //     if (packStr) {
-            //         packStr += `\ndefine("${nameArray[0]}", function (require, exports, module) {${packStr};\n})\n`;
-            //         return packStr;
-            //     }
-            // }
             let packStr = yield this.webpack(nameArray, externals);
             //md5模块名
             let mName = this.moduleName + this.uuid();
