@@ -99,7 +99,7 @@ class nodePackFile {
                 return fs.readFileSync(ph.join(this.nodeModulePath, pathObj.name, pathObj.file)).toString();
             }
             catch (error) {
-                console.log(`模块${name}未找到`);
+                return null;
             }
         }
         else {
@@ -115,16 +115,19 @@ class nodePackFile {
      *
      * @memberOf nodeFile
      */
-    getPackFileString(nameArray, externals = []) {
+    getPackFileString(nameArray, externals = [], dev = false) {
         return __awaiter(this, void 0, Promise, function* () {
-            // if (nameArray.length === 1) {
-            //     let packStr = this.getFileString(nameArray[0]);
-            //     if (packStr) {
-            //         packStr += `\ndefine("${nameArray[0]}", function (require, exports, module) {${packStr};\n})\n`;
-            //         return packStr;
-            //     }
-            // }
-            let packStr = yield this.webpack(nameArray, externals);
+            let plugins = null;
+            if (!dev) {
+                if (nameArray.find(value => value.indexOf('react') === 0)) {
+                    plugins = [new webpack.DefinePlugin({
+                            "process.env": {
+                                NODE_ENV: JSON.stringify("production")
+                            }
+                        })];
+                }
+            }
+            let packStr = yield this.webpack(nameArray, externals, plugins);
             //md5模块名
             let mName = this.moduleName + this.uuid();
             packStr = `\ndefine("${mName}", function (require, exports, module) {module.exports =${packStr}})\n`;
@@ -135,26 +138,6 @@ class nodePackFile {
         });
     }
     /**
-     * 唯一值
-     *
-     * @private
-     * @returns
-     *
-     * @memberOf nodeFile
-     */
-    uuid() {
-        var s = [];
-        var hexDigits = "0123456789abcdef";
-        for (var i = 0; i < 36; i++) {
-            s[i] = hexDigits.substr(Math.floor(Math.random() * 0x10), 1);
-        }
-        s[14] = "4"; // bits 12-15 of the time_hi_and_version field to 0010
-        s[19] = hexDigits.substr((s[19] & 0x3) | 0x8, 1); // bits 6-7 of the clock_seq_hi_and_reserved to 01
-        s[8] = s[13] = s[18] = s[23] = "-";
-        var uuid = s.join("");
-        return uuid;
-    }
-    /**
      * webpack 打包文件string
      *
      * @param {string[]} nameArray
@@ -162,7 +145,7 @@ class nodePackFile {
      *
      * @memberOf nodeFile
      */
-    webpack(nameArray, externals = []) {
+    webpack(nameArray, externals = [], plugins) {
         let entryPath = ph.join(process.cwd(), './___1entry.js');
         let outputPath = ph.join(process.cwd(), './___1output.js');
         let entryStr = '';
@@ -179,9 +162,11 @@ class nodePackFile {
                 let compiler = webpack({
                     entry: entryPath,
                     output: {
-                        filename: '___1output.js',
+                        filename: '/___1output.js',
                         path: process.cwd()
-                    }, externals: externalsObj
+                    },
+                    externals: externalsObj,
+                    plugins: plugins
                 });
                 compiler.run(function (err, stats) {
                     let content = fs.readFileSync(outputPath).toString();
@@ -194,6 +179,26 @@ class nodePackFile {
                 console.log(error);
             }
         });
+    }
+    /**
+   * 唯一值
+   *
+   * @private
+   * @returns
+   *
+   * @memberOf nodeFile
+   */
+    uuid() {
+        var s = [];
+        var hexDigits = "0123456789abcdef";
+        for (var i = 0; i < 36; i++) {
+            s[i] = hexDigits.substr(Math.floor(Math.random() * 0x10), 1);
+        }
+        s[14] = "4"; // bits 12-15 of the time_hi_and_version field to 0010
+        s[19] = hexDigits.substr((s[19] & 0x3) | 0x8, 1); // bits 6-7 of the clock_seq_hi_and_reserved to 01
+        s[8] = s[13] = s[18] = s[23] = "-";
+        var uuid = s.join("");
+        return uuid;
     }
 }
 let npmDep = new nodePackFile();
