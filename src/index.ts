@@ -67,7 +67,11 @@ class nodePackFile {
     }, {
         name: 'babel-polyfill',
         file: 'dist/polyfill.js',
-        minFile: 'dist/polyfill.min.js',
+        minFile: 'dist/polyfill.min.js'
+    }, {
+        name: 'axiba-modular',
+        file: 'src/index.js',
+        minFile: 'src/index.js'
     }];
 
     /**
@@ -92,11 +96,11 @@ class nodePackFile {
             try {
                 return fs.readFileSync(ph.join(this.nodeModulePath, pathObj.name, pathObj.file)).toString();
             } catch (error) {
-                return null;
+                return '';
             }
 
         } else {
-            return null;
+            return '';
         }
     }
 
