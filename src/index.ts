@@ -71,7 +71,7 @@ class nodePackFile {
     }, {
         name: 'axiba-modular',
         file: 'src/index.js',
-        minFile: 'src/index.js'
+        minFile: 'dist/index.js'
     }];
 
     /**
@@ -90,11 +90,12 @@ class nodePackFile {
      * 
      * @memberOf nodeFile
      */
-    getFileString(name: string) {
+    getFileString(name: string, min = false) {
         let pathObj = this.nodeFileArray.find(value => value.name === name);
+        let filePath = min ? pathObj.minFile : pathObj.file;
         if (pathObj) {
             try {
-                return fs.readFileSync(ph.join(this.nodeModulePath, pathObj.name, pathObj.file)).toString();
+                return fs.readFileSync(ph.join(this.nodeModulePath, pathObj.name, filePath)).toString();
             } catch (error) {
                 return '';
             }
@@ -132,11 +133,12 @@ class nodePackFile {
         //md5模块名
         let mName = this.moduleName + this.uuid();
 
-        packStr = `\ndefine("${mName}", function (require, exports, module) {module.exports =${packStr}})\n`;
+        packStr = `\ndefine("${mName}",[], function (require, exports, module) {module.exports =${packStr}})\n`;
 
         nameArray.forEach((value, index) => {
-            packStr += `\ndefine("${value}", function (require, exports, module) {\nmodule.exports = require('${mName}')['___${index}'];\n})\n`;
+            packStr += `\ndefine("${value}",['${mName}'], function (require, exports, module) {\nmodule.exports = require('${mName}')['___${index}'];\n})\n`;
         });
+
         return packStr;
     }
 
