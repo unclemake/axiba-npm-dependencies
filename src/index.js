@@ -76,7 +76,7 @@ class nodePackFile {
                 minFile: 'dist/polyfill.min.js'
             }, {
                 name: 'axiba-modular',
-                file: 'src/index.js',
+                file: 'dist/index.js',
                 minFile: 'dist/index.js'
             }];
         /**
@@ -151,8 +151,8 @@ class nodePackFile {
      * @memberOf nodeFile
      */
     webpack(nameArray, externals = [], plugins) {
-        let entryPath = ph.join(process.cwd(), './___1entry.js');
-        let outputPath = ph.join(process.cwd(), './___1output.js');
+        let entryPath = ph.join(__dirname, './___1entry.js');
+        let outputPath = ph.join(__dirname, './___1output.js');
         let entryStr = '';
         nameArray.forEach((value, index) => {
             entryStr += `exports.___${index} = require('${value}');`;
@@ -167,16 +167,16 @@ class nodePackFile {
                 let compiler = webpack({
                     entry: entryPath,
                     output: {
-                        filename: '/___1output.js',
-                        path: process.cwd()
+                        filename: '___1output.js',
+                        path: __dirname
                     },
                     externals: externalsObj,
                     plugins: plugins
                 });
                 compiler.run(function (err, stats) {
                     let content = fs.readFileSync(outputPath).toString();
-                    fs.unlinkSync(entryPath);
-                    fs.unlinkSync(outputPath);
+                    // fs.unlinkSync(entryPath);
+                    // fs.unlinkSync(outputPath);
                     resolve(content);
                 });
             }
