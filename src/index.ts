@@ -176,9 +176,10 @@ class nodePackFile {
                         filename: '___1output.js',
                         path: __dirname
                     },
-                    externals: externalsObj,
+                    externals: Object.assign(externalsObj),
                     plugins: plugins
                 });
+
 
                 compiler.run(function (err, stats) {
                     let content = fs.readFileSync(outputPath).toString();
